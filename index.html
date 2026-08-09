@@ -26,7 +26,7 @@
       --line: rgba(0, 0, 0, 0.08);
       --bg: #f5f5f5;
       --card: #fff;
-      --nav-h: 56px;
+      --nav-h: 44px;
       --sidebar-w: min(400px, 38vw);
       --font: "Source Sans 3", system-ui, sans-serif;
       --font-display: "Raleway", sans-serif;
@@ -55,11 +55,20 @@
       z-index: 20;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0 1rem;
-      background: linear-gradient(135deg, var(--orange-soft), var(--orange-deep));
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+      gap: 0.65rem;
+      padding: 0 0.75rem;
+      /* Map shows through — light scrim for contrast */
+      background: linear-gradient(
+        180deg,
+        rgba(18, 14, 10, 0.55) 0%,
+        rgba(18, 14, 10, 0.28) 55%,
+        rgba(18, 14, 10, 0.08) 100%
+      );
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: none;
       color: #fff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
     .brand {
       display: flex;
@@ -68,11 +77,12 @@
       text-decoration: none;
       color: #fff !important;
       line-height: 1;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     }
     .brand-mark {
       font-family: var(--font-display);
       font-weight: 700;
-      font-size: 1.35rem;
+      font-size: 1.05rem;
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
@@ -80,37 +90,49 @@
     .ticker {
       flex: 1;
       min-width: 0;
-      font-size: 0.82rem;
+      font-size: 0.75rem;
       font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       opacity: 0.95;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     }
     .top-actions {
       display: flex;
-      gap: 0.4rem;
+      gap: 0.35rem;
       flex-shrink: 0;
+      align-items: center;
     }
     .top-btn {
       appearance: none;
-      border: 1px solid rgba(255, 255, 255, 0.45);
-      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.14);
       color: #fff;
       border-radius: 999px;
-      padding: 0.35rem 0.75rem;
-      font-size: 0.78rem;
+      padding: 0.28rem 0.7rem;
+      font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
+      min-height: 1.85rem;
+      line-height: 1;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
     }
-    a.top-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.22); }
+    .top-btn:hover,
+    .top-btn.is-active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.28);
+      border-color: rgba(255, 255, 255, 0.55);
+    }
+    button.top-btn { font-family: inherit; }
 
     .layout {
       position: absolute;
-      inset: var(--nav-h) 0 0 0;
+      inset: 0;
       display: flex;
       min-height: 0;
     }
@@ -118,6 +140,8 @@
     .sidebar {
       width: var(--sidebar-w);
       flex: 0 0 var(--sidebar-w);
+      margin-top: var(--nav-h);
+      height: calc(100% - var(--nav-h));
       background: var(--bg);
       overflow: auto;
       padding: 0.75rem;
@@ -196,8 +220,16 @@
     }
     .sidebar.is-detail .legend,
     .sidebar.is-detail .legend-hint,
-    .sidebar.is-detail .sidebar-tools {
+    .sidebar.is-detail .sidebar-tools,
+    .sidebar.is-detail #status-line {
       display: none;
+    }
+    .detail-meta {
+      margin: 0.15rem 0 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.4;
+      padding: 0.35rem 0.15rem 0.15rem;
     }
 
     .panel-title {
@@ -512,6 +544,11 @@
     }
     #map { position: absolute; inset: 0; }
 
+    /* Mobile bottom-sheet chrome (hidden on desktop) */
+    .sheet-handle {
+      display: none;
+    }
+
     .map-locate {
       position: absolute;
       z-index: 3;
@@ -529,7 +566,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      transition: color 0.15s ease, background 0.15s ease;
+      transition: color 0.15s ease, background 0.15s ease, bottom 0.28s ease;
     }
     .map-locate:hover {
       color: var(--orange);
@@ -548,9 +585,9 @@
 
     .layers {
       position: absolute;
-      top: 0.75rem;
-      right: 0.75rem;
-      z-index: 4;
+      top: calc(var(--nav-h) + 0.45rem);
+      right: 0.65rem;
+      z-index: 15;
       width: 240px;
       background: #fff;
       border-radius: 8px;
@@ -558,35 +595,10 @@
       overflow: hidden;
       font-size: 0.82rem;
     }
-    .layers-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.65rem 0.75rem;
-      background: linear-gradient(135deg, var(--orange-soft), var(--orange-deep));
-      color: #fff;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      font-size: 0.78rem;
+    .layers.collapsed {
+      display: none;
     }
-    .layers-head button {
-      appearance: none;
-      border: 0;
-      background: transparent;
-      color: #fff;
-      cursor: pointer;
-      font-size: 1rem;
-      line-height: 1;
-    }
-    .layers-body { padding: 0.35rem 0 0.5rem; }
-    .layers.collapsed .layers-body { display: none; }
-    .layers.collapsed { width: 44px; }
-    .layers.collapsed .layers-head {
-      justify-content: center;
-      padding: 0.65rem;
-    }
-    .layers.collapsed .layers-title { display: none; }
+    .layers-body { padding: 0.45rem 0 0.55rem; }
     .layer-item {
       display: flex;
       align-items: center;
@@ -746,32 +758,172 @@
     }
 
     @media (max-width: 900px) {
-      :root { --sidebar-w: 100%; }
-      .layout { flex-direction: column-reverse; }
+      :root {
+        --sidebar-w: 100%;
+        --sheet-peek: 4.75rem;
+        --sheet-open: min(38vh, 340px);
+        --sheet-detail: min(62vh, 520px);
+        --mobile-sheet: var(--sheet-peek);
+      }
+      html.sheet-open {
+        --mobile-sheet: var(--sheet-open);
+      }
+      html.sheet-open.sheet-detail {
+        --mobile-sheet: var(--sheet-detail);
+      }
+
+      .layout {
+        display: block;
+      }
+      .map-wrap {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
       .sidebar {
         position: absolute;
         left: 0;
         right: 0;
         bottom: 0;
-        max-height: 48vh;
+        z-index: 6;
         width: 100%;
-        flex-basis: auto;
-        border-radius: 14px 14px 0 0;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
+        flex: none;
+        margin-top: 0;
+        height: var(--mobile-sheet);
+        max-height: none;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -6px 28px rgba(0, 0, 0, 0.16);
+        padding: 0 0.75rem 0.65rem;
+        gap: 0.45rem;
+        overflow: hidden;
+        transition: height 0.28s ease, transform 0.28s ease;
+        background: color-mix(in srgb, var(--bg) 92%, #fff);
+        backdrop-filter: blur(8px);
+      }
+      .sidebar.is-sheet-open {
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
       }
       .sidebar.is-hidden {
-        transform: translateY(105%);
-        pointer-events: none;
+        /* Keep a peek strip — never bury the map under a full list */
+        transform: none;
+        pointer-events: auto;
+        height: var(--sheet-peek);
       }
-      .map-wrap { flex: 1; }
+
+      .sheet-handle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        width: 100%;
+        margin: 0;
+        padding: 0.45rem 0.5rem 0.35rem;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        flex: 0 0 auto;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: linear-gradient(
+          180deg,
+          color-mix(in srgb, var(--bg) 96%, #fff) 70%,
+          transparent
+        );
+      }
+      .sheet-grip {
+        width: 2.4rem;
+        height: 0.28rem;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.18);
+      }
+      .sheet-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--ink);
+        letter-spacing: 0.01em;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sheet-hint {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: var(--orange);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .sidebar.is-sheet-open .sheet-hint::after {
+        content: " · tocar para reducir";
+      }
+      .sidebar:not(.is-sheet-open) .sheet-hint::after {
+        content: " · tocar para lista";
+      }
+
+      /* Peek: only the handle — map stays dominant (fogos.pt-like) */
+      .sidebar:not(.is-sheet-open) > :not(.sheet-handle) {
+        display: none !important;
+      }
+
+      .sidebar.is-detail .legend,
+      .sidebar.is-detail .legend-hint,
+      .sidebar.is-detail .sidebar-tools,
+      .sidebar.is-detail #status-line {
+        display: none;
+      }
+
+      .legend-hint { display: none; }
+      .footnote,
+      .footnote-warn {
+        font-size: 0.7rem;
+      }
+
+      .map-locate {
+        bottom: calc(var(--mobile-sheet) + 0.85rem);
+        right: 0.65rem;
+      }
+      .map-wrap.is-leaflet .leaflet-control-zoom {
+        margin-bottom: calc(var(--mobile-sheet) + 0.85rem) !important;
+        margin-right: 0.65rem;
+      }
+      .maplibregl-ctrl-bottom-right {
+        margin-bottom: calc(var(--mobile-sheet) + 0.35rem) !important;
+        margin-right: 0.35rem;
+      }
+
       .layers {
-        top: 0.5rem;
+        top: calc(var(--nav-h) + 0.4rem);
         right: 0.5rem;
-        width: 210px;
+        width: min(220px, calc(100vw - 1.25rem));
+        max-height: calc(100% - var(--mobile-sheet) - var(--nav-h) - 1rem);
+        overflow: auto;
       }
+      .layers.collapsed { display: none; }
       .ticker { display: none; }
       .card-title { font-size: 1.05rem; }
       .asset strong { font-size: 1.15rem; }
+      .region-card { padding: 0.7rem 0.85rem; }
+      .topbar {
+        --nav-h: 42px;
+        padding: 0 0.55rem;
+      }
+      .brand-mark { font-size: 0.95rem; }
+      .top-btn {
+        padding: 0.24rem 0.62rem;
+        font-size: 0.72rem;
+        min-height: 1.7rem;
+      }
+    }
+
+    @media (max-width: 900px) and (max-height: 640px) {
+      :root {
+        --sheet-open: min(34vh, 260px);
+        --sheet-detail: min(55vh, 400px);
+      }
     }
   </style>
 </head>
@@ -782,12 +934,20 @@
     </a>
     <p class="ticker" id="ticker">Cargando incendios…</p>
     <div class="top-actions">
+      <button type="button" class="top-btn" id="btn-layers" aria-expanded="false" aria-controls="layers-panel">
+        Mapa
+      </button>
       <a class="top-btn" href="./about.html">Sobre</a>
     </div>
   </header>
 
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Resumen por región">
+      <button type="button" class="sheet-handle" id="btn-sheet" aria-expanded="false" aria-controls="fire-list">
+        <span class="sheet-grip" aria-hidden="true"></span>
+        <span class="sheet-label" id="sheet-label">Lista de incendios</span>
+        <span class="sheet-hint" aria-hidden="true"></span>
+      </button>
       <div class="sidebar-tools">
         <input class="search" id="search" type="search" placeholder="Buscar municipio o provincia…" autocomplete="off" />
       </div>
@@ -830,11 +990,7 @@
           />
         </svg>
       </button>
-      <div class="layers" id="layers-panel">
-        <div class="layers-head">
-          <span class="layers-title">Mapa</span>
-          <button type="button" id="btn-layers" aria-label="Plegar panel">‹</button>
-        </div>
+      <div class="layers collapsed" id="layers-panel" hidden>
         <div class="layers-body">
           <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> Oficiales CyL (ES)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-galicia" checked /> Galicia (incendios.gal)</label>

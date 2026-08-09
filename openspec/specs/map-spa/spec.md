@@ -41,6 +41,18 @@ and Portugal fogos.pt — without a long list of empty per-CCAA “ver mapa” s
 - **WHEN** the overview renders
 - **THEN** a card MUST show N detecciones and fly-to-all behavior
 
+### Requirement: Mobile map-first sheet
+
+On narrow viewports the map MUST fill the layout. The fire list MUST sit in a bottom
+sheet that peeks by default and expands on demand (fogos.pt-like), not a ~half-screen
+panel that hides the map.
+
+#### Scenario: Peek then expand
+
+- **GIVEN** a viewport ≤900px wide
+- **WHEN** the app boots
+- **THEN** the sidebar MUST NOT start fully expanded and the sheet handle MUST toggle `is-sheet-open`
+
 ### Requirement: Hobby disclaimer
 
 The UI MUST keep a visible experimental / non-official emergency disclaimer including 112.

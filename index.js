@@ -56,6 +56,8 @@
     ticker: document.getElementById("ticker"),
     search: document.getElementById("search"),
     btnToggleList: document.getElementById("btn-toggle-list"),
+    btnSheet: document.getElementById("btn-sheet"),
+    sheetLabel: document.getElementById("sheet-label"),
     btnLocate: document.getElementById("btn-locate"),
     btnRecenter: document.getElementById("btn-recenter"),
     btnLayers: document.getElementById("btn-layers"),
@@ -790,6 +792,7 @@
       if (wrap) wrap.style.zIndex = on ? "600" : "";
     }
 
+    document.documentElement.classList.toggle("sheet-detail", !!fire);
     renderSidebar();
 
     if (fire && fly && fire.lat != null && fire.lng != null) {
@@ -1100,6 +1103,14 @@
       if (body) body.appendChild(buildResourcesChart(fire.history || []));
     }
     appendListItem(card);
+
+    const meta = document.createElement("p");
+    meta.className = "detail-meta";
+    meta.textContent =
+      (els.status && els.status.textContent && !els.status.querySelector(".error")
+        ? els.status.textContent
+        : "") || "Datos del mapa actualizados en segundo plano.";
+    appendListItem(meta);
   }
 
   function renderSearchHits(list) {
@@ -1356,6 +1367,14 @@
       `${pt ? ` · ${pt} PT` : ""}` +
       `${hot ? ` · ${hot} activos` : ""}` +
       `${firmsOn && firmsCount ? ` · ${firmsCount} satélite ES` : ""}`;
+    if (els.sheetLabel) {
+      const bits = [];
+      if (cyl) bits.push(`${cyl} CyL`);
+      if (ga) bits.push(`${ga} Galicia`);
+      if (pt) bits.push(`${pt} PT`);
+      if (firmsOn && firmsCount) bits.push(`${firmsCount} satélite`);
+      els.sheetLabel.textContent = bits.length ? bits.join(" · ") : "Lista de incendios";
+    }
   }
 
   function escapeHtml(value) {
@@ -1440,7 +1459,40 @@
     }
   }
 
+  function isMobileLayout() {
+    return window.matchMedia("(max-width: 900px)").matches;
+  }
+
+  function notifyMapResize() {
+    if (!map) return;
+    requestAnimationFrame(() => {
+      try {
+        if (mapKind === "leaflet" && typeof map.invalidateSize === "function") {
+          map.invalidateSize({ animate: false });
+        } else if (mapKind === "gl" && typeof map.resize === "function") {
+          map.resize();
+        }
+      } catch {
+        /* ignore */
+      }
+    });
+  }
+
+  function setSheetOpen(open) {
+    if (!els.sidebar) return;
+    els.sidebar.classList.toggle("is-sheet-open", !!open);
+    document.documentElement.classList.toggle("sheet-open", !!open);
+    if (els.btnSheet) els.btnSheet.setAttribute("aria-expanded", open ? "true" : "false");
+    notifyMapResize();
+  }
+
   function showSidebar(show) {
+    if (isMobileLayout()) {
+      // Map-first: peek always visible; show=true expands the sheet.
+      els.sidebar.classList.remove("is-hidden");
+      setSheetOpen(!!show);
+      return;
+    }
     els.sidebar.classList.toggle("is-hidden", !show);
   }
 
@@ -1511,15 +1563,44 @@
 
     if (els.btnToggleList) {
       els.btnToggleList.addEventListener("click", () => {
+        if (isMobileLayout()) {
+          setSheetOpen(!els.sidebar.classList.contains("is-sheet-open"));
+          return;
+        }
         const hidden = els.sidebar.classList.contains("is-hidden");
         showSidebar(hidden);
       });
     }
 
+    if (els.btnSheet) {
+      els.btnSheet.addEventListener("click", () => {
+        setSheetOpen(!els.sidebar.classList.contains("is-sheet-open"));
+      });
+    }
+
+    function syncLayersToggle() {
+      if (!els.btnLayers || !els.layersPanel) return;
+      const open = !els.layersPanel.classList.contains("collapsed");
+      els.btnLayers.setAttribute("aria-expanded", open ? "true" : "false");
+      els.btnLayers.classList.toggle("is-active", open);
+      els.layersPanel.hidden = !open;
+    }
+
     els.btnLayers.addEventListener("click", () => {
       els.layersPanel.classList.toggle("collapsed");
-      els.btnLayers.textContent = els.layersPanel.classList.contains("collapsed") ? "›" : "‹";
+      syncLayersToggle();
     });
+
+    // Close layers when clicking the map chrome (not the panel).
+    document.addEventListener("click", (e) => {
+      if (!els.layersPanel || els.layersPanel.classList.contains("collapsed")) return;
+      const t = e.target;
+      if (els.layersPanel.contains(t) || els.btnLayers.contains(t)) return;
+      els.layersPanel.classList.add("collapsed");
+      syncLayersToggle();
+    });
+
+    syncLayersToggle();
 
     els.search.addEventListener("input", () => {
       query = els.search.value || "";
@@ -1612,8 +1693,26 @@
     });
 
     if (window.matchMedia("(max-width: 900px)").matches) {
-      showSidebar(true);
+      // Map-first like fogos.pt: peek strip only until the user opens the list.
+      els.sidebar.classList.remove("is-hidden");
+      setSheetOpen(false);
+      if (els.layersPanel) {
+        els.layersPanel.classList.add("collapsed");
+        syncLayersToggle();
+      }
     }
+
+    window.addEventListener(
+      "resize",
+      () => {
+        if (!isMobileLayout()) {
+          document.documentElement.classList.remove("sheet-open", "sheet-detail");
+          els.sidebar.classList.remove("is-sheet-open");
+        }
+        notifyMapResize();
+      },
+      { passive: true }
+    );
   }
 
   async function boot() {

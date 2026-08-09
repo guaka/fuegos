@@ -141,6 +141,14 @@ test.describe("Fuegos Vivos map e2e", () => {
     await expect(page.locator(".footnote-warn")).toContainText(/112/);
   });
 
+  test("header puts Mapa and Sobre together", async ({ page }) => {
+    await page.goto("/");
+    const actions = page.locator(".top-actions");
+    await expect(actions.locator("#btn-layers")).toHaveText(/Mapa/i);
+    await expect(actions.locator('a.top-btn[href="./about.html"]')).toHaveText(/Sobre/i);
+    await expect(page.locator(".layers-head")).toHaveCount(0);
+  });
+
   test("Aquí locate control is on the map", async ({ page }) => {
     await page.goto("/");
     const locate = page.locator("#btn-locate.map-locate");
@@ -155,6 +163,8 @@ test.describe("Fuegos Vivos map e2e", () => {
     await expect(page.locator(".map-marker.pt").first()).toBeVisible({ timeout: 30_000 });
     const before = await page.locator(".map-marker.pt").count();
     expect(before).toBeGreaterThan(0);
+    await page.locator("#btn-layers").click();
+    await expect(page.locator("#layers-panel")).toBeVisible();
     await page.locator("#layer-portugal").uncheck();
     await expect(page.locator(".map-marker.pt")).toHaveCount(0);
   });
@@ -168,5 +178,19 @@ test.describe("Fuegos Vivos map e2e", () => {
     await expect(page.locator("article.card.is-selected")).toBeVisible();
     const after = await page.locator(".map-marker").count();
     expect(after).toBe(before);
+  });
+
+  test("mobile map-first sheet peeks then expands", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await expect(page.locator("#map")).toBeVisible();
+    await expect(page.locator("#btn-sheet")).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("#sidebar")).not.toHaveClass(/is-sheet-open/);
+    // List body hidden while peeking
+    await expect(page.locator("#fire-list")).toBeHidden();
+    await page.locator("#btn-sheet").click();
+    await expect(page.locator("#sidebar")).toHaveClass(/is-sheet-open/);
+    await expect(page.locator("#fire-list")).toBeVisible();
+    await expect(page.locator(".panel-title").first()).toContainText(/Toda España/i);
   });
 });
