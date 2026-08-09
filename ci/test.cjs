@@ -125,7 +125,7 @@ function read(file) {
 
 async function main() {
   test("required files exist", () => {
-    for (const f of ["index.html", "index.js", "about.html", "about.js", "favicon.svg", "LICENSE", "README.md", ".nojekyll"]) {
+    for (const f of ["index.html", "index.js", "about.html", "about.js", "favicon.svg", "LICENSE", "README.md", "DATA.md", ".nojekyll"]) {
       assert.ok(fs.existsSync(path.join(root, f)), missing(f));
     }
   });
@@ -218,6 +218,21 @@ async function main() {
       "must not call setStyle({...map.getStyle()}) — breaks MapLibre before load"
     );
     assert.ok(!js.includes("data/pt-fires.json"), "must not bake PT fires into static data files");
+  });
+
+  test("DATA.md documents sources with tables", () => {
+    const md = read("DATA.md");
+    for (const needle of [
+      "| Fuente |",
+      "JCyL",
+      "EFFIS",
+      "fogos.pt",
+      "EGIF",
+      "incidents-pt",
+      "CORS",
+    ]) {
+      assert.ok(md.includes(needle), `missing ${needle}`);
+    }
   });
 
   test("LICENSE is AGPL", () => {

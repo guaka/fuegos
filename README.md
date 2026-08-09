@@ -6,6 +6,8 @@ Sitio estático (`index.html` + `index.js`). Sin build. Licencia **AGPL-3.0**.
 
 ## Datos
 
+Resumen corto; detalle y comparación en **[DATA.md](./DATA.md)** (tablas de fuentes).
+
 - **Oficiales en vivo:** [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL) — Castilla y León, solo partes en curso (sin extinción, parte reciente).
 - **Resto de España:** capas WMS [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) (detecciones satélite, no despachos). No hay un feed nacional abierto diario comparable.
 - **Portugal:** enlace a [fogos.pt](https://fogos.pt).
@@ -16,6 +18,7 @@ La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas.
 
 - [`index.html`](./index.html) — mapa en vivo
 - [`about.html`](./about.html) — cobertura geográfica (texto + mapa)
+- [`DATA.md`](./DATA.md) — fuentes de datos (tablas)
 
 ```bash
 python3 -m http.server 8080
