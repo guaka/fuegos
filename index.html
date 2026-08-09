@@ -8,8 +8,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Fuegos Vivos — mapa de incendios en León, Salamanca y Badajoz." />
+  <meta name="description" content="Fuegos Vivos — mapa de incendios en Castilla y León, Extremadura y la frontera portuguesa." />
   <title>Fuegos Vivos</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -101,8 +102,11 @@
       font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
     }
-    .top-btn:hover { background: rgba(255, 255, 255, 0.22); }
+    a.top-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.22); }
 
     .layout {
       position: absolute;
@@ -454,6 +458,8 @@
     </a>
     <p class="ticker" id="ticker">Cargando incendios…</p>
     <div class="top-actions">
+      <a class="top-btn" href="./about.html">Sobre</a>
+      <a class="top-btn" href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a>
       <button type="button" class="top-btn" id="btn-toggle-list">Lista</button>
       <button type="button" class="top-btn" id="btn-recenter">Mapa</button>
     </div>
@@ -473,9 +479,11 @@
       </div>
       <ul class="fire-list" id="fire-list"></ul>
       <p class="footnote">
-        ES (León/Salamanca): partes JCyL.
+        ES (Castilla y León): partes JCyL.
         PT (frontera): <a href="https://fogos.pt" rel="noopener">fogos.pt</a> / ANEPC.
-        Badajoz y satélite: EFFIS/Copernicus (detecciones, no despachos).
+        Extremadura (Badajoz/Cáceres) y satélite: EFFIS/Copernicus (detecciones, no despachos).
+        <a href="./about.html">Sobre la cobertura</a> ·
+        <a href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a> ·
         <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>
       </p>
     </aside>

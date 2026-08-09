@@ -3,12 +3,26 @@
   "use strict";
 
   const FOCUS = {
-    center: [-6.55, 40.95],
-    zoom: 7,
-    bbox: [-8.35, 38.45, -4.55, 43.45], // west,south,east,north — includes PT border
+    center: [-5.6, 40.85],
+    zoom: 6.35,
+    // Castilla y León + Extremadura + Portuguese border belt
+    bbox: [-8.35, 37.85, -1.55, 43.55],
   };
 
-  const FOCUS_PROVINCES = new Set(["LEÓN", "SALAMANCA"]);
+  /** All Castilla y León provinces (JCyL open data). */
+  const FOCUS_PROVINCES = new Set([
+    "LEÓN",
+    "SALAMANCA",
+    "ZAMORA",
+    "ÁVILA",
+    "AVILA",
+    "VALLADOLID",
+    "PALENCIA",
+    "BURGOS",
+    "SEGOVIA",
+    "SORIA",
+  ]);
+
   const ACTIVE_STATUSES = new Set(["ACTIVO", "CONTROLADO", "ESTABILIZADO"]);
   const REFRESH_MS = 5 * 60 * 1000;
   const JCYL_URL =
@@ -16,7 +30,7 @@
   const FOGOS_PT_URL = "https://api-lb.fogos.pt/new/fires";
   const EFFIS_WMS = "https://maps.effis.emergency.copernicus.eu/effis";
 
-  /** Portuguese districts near León / Salamanca / Badajoz. */
+  /** Portuguese districts along the western Spanish focus. */
   const PT_BORDER_DISTRICTS = new Set([
     "BRAGANÇA",
     "GUARDA",
@@ -296,9 +310,12 @@
 
   async function fetchJcylFires() {
     const since = isoDate(daysAgo(14));
+    const provinces = ["LEÓN", "SALAMANCA", "ZAMORA", "ÁVILA", "VALLADOLID", "PALENCIA", "BURGOS", "SEGOVIA", "SORIA"]
+      .map((p) => `'${p}'`)
+      .join(",");
     const where =
       `fecha_del_parte >= date'${since}'` +
-      ` and provincia in ('LEÓN','SALAMANCA')` +
+      ` and provincia in (${provinces})` +
       ` and situacion_actual in ('ACTIVO','CONTROLADO','ESTABILIZADO')`;
 
     const rows = [];

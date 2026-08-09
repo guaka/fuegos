@@ -102,7 +102,7 @@ function read(file) {
 
 async function main() {
   test("required files exist", () => {
-    for (const f of ["index.html", "index.js", "LICENSE", "README.md", ".nojekyll"]) {
+    for (const f of ["index.html", "index.js", "about.html", "about.js", "favicon.svg", "LICENSE", "README.md", ".nojekyll"]) {
       assert.ok(fs.existsSync(path.join(root, f)), missing(f));
     }
   });
@@ -111,6 +111,32 @@ async function main() {
     require("child_process").execFileSync(process.execPath, ["--check", path.join(root, "index.js")], {
       stdio: "pipe",
     });
+    require("child_process").execFileSync(process.execPath, ["--check", path.join(root, "about.js")], {
+      stdio: "pipe",
+    });
+  });
+
+  test("about page describes coverage and map", () => {
+    const html = read("about.html");
+    for (const needle of [
+      "Regiones cubiertas",
+      "Castilla y León",
+      "Extremadura",
+      "León",
+      "Salamanca",
+      "Badajoz",
+      "Cáceres",
+      "Zamora",
+      "coverage-map",
+      "./about.js",
+      "Bragança",
+    ]) {
+      assert.ok(html.includes(needle), `missing ${needle}`);
+    }
+    const js = read("about.js");
+    assert.ok(js.includes("BBOX"));
+    assert.ok(js.includes("maplibregl"));
+    assert.ok(js.includes("fitBounds"));
   });
 
   test("HTML has core UI hooks", () => {
@@ -126,6 +152,8 @@ async function main() {
       "./index.js",
       "maplibre-gl",
       "AGPL",
+      "about.html",
+      "favicon.svg",
     ]) {
       assert.ok(html.includes(needle), `missing ${needle}`);
     }
@@ -140,6 +168,12 @@ async function main() {
       "parseResources",
       "normalizeFogosPt",
       "fetchFogosPtFires",
+      "ZAMORA",
+      "ÁVILA",
+      "VALLADOLID",
+      "BURGOS",
+      "SORIA",
+      "FOCUS_PROVINCES",
       "LEÓN",
       "SALAMANCA",
       "maplibregl",
@@ -196,10 +230,12 @@ async function main() {
   });
 
   test("focus bbox includes Portuguese border sample points", () => {
-    const bbox = [-8.35, 38.45, -4.55, 43.45];
+    const bbox = [-8.35, 37.85, -1.55, 43.55];
     assert.ok(inFocusBbox(41.636695, -7.33691, bbox)); // Vila Real
     assert.ok(inFocusBbox(40.569068, -7.509515, bbox)); // Guarda
     assert.ok(inFocusBbox(42.721508, -5.951445, bbox)); // León
+    assert.ok(inFocusBbox(41.65, -4.73, bbox)); // Valladolid
+    assert.ok(inFocusBbox(39.48, -6.37, bbox)); // Cáceres
     assert.ok(!inFocusBbox(38.7, -9.1, bbox)); // Lisboa area — west of focus
   });
 
@@ -207,9 +243,12 @@ async function main() {
     const since = new Date();
     since.setUTCDate(since.getUTCDate() - 14);
     const iso = since.toISOString().slice(0, 10);
+    const provinces = ["LEÓN", "SALAMANCA", "ZAMORA", "ÁVILA", "VALLADOLID", "PALENCIA", "BURGOS", "SEGOVIA", "SORIA"]
+      .map((p) => `'${p}'`)
+      .join(",");
     const where =
       `fecha_del_parte >= date'${iso}'` +
-      ` and provincia in ('LEÓN','SALAMANCA')` +
+      ` and provincia in (${provinces})` +
       ` and situacion_actual in ('ACTIVO','CONTROLADO','ESTABILIZADO')`;
     const url = new URL(
       "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records"
