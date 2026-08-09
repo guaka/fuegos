@@ -38,6 +38,8 @@
   const TITLE_ABOUT = `Sobre ${SITE_HOST}`;
 
   const REFRESH_MS = 5 * 60 * 1000;
+  /** If the tab sat idle / backgrounded this long, refresh as soon as the user returns. */
+  const IDLE_STALE_MS = 15 * 60 * 1000;
   const JCYL_URL =
     "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records";
   const GALICIA_URL = "https://incendios.gal/api/incidencias";
@@ -106,6 +108,12 @@
   let firmsCount = 0;
   /** @type {{ type: string, features: any[] }} */
   let firmsGeo = { type: "FeatureCollection", features: [] };
+  let lastRefreshAt = 0;
+  let lastActivityAt = Date.now();
+  /** @type {ReturnType<typeof setInterval> | null} */
+  let refreshTimer = null;
+  /** @type {Promise<void> | null} */
+  let refreshInFlight = null;
 
   /** Leaflet-only layer handles */
   /** @type {Record<string, any>} */
@@ -1507,7 +1515,9 @@
   }
 
   async function refresh() {
+    if (refreshInFlight) return refreshInFlight;
     setHeaderStatus("Actualizando…");
+    refreshInFlight = (async () => {
     try {
       const [esResult, gaResult, ptResult, firmsResult] = await Promise.allSettled([
         fetchJcylFires(),
@@ -1541,6 +1551,7 @@
       renderMarkers();
       updateTicker();
       scheduleLeafletResize();
+      lastRefreshAt = Date.now();
       if (notes.length) {
         setHeaderStatus(`${els.ticker.textContent} · falló ${notes.join("/")}`);
       } else if (
@@ -1575,6 +1586,55 @@
       setHeaderStatus("Error al actualizar");
       els.list.innerHTML = '<li class="error">No se pudieron cargar los datos.</li>';
       clearMarkers();
+    } finally {
+      refreshInFlight = null;
+    }
+    })();
+    return refreshInFlight;
+  }
+
+  function dataIsStale() {
+    if (!lastRefreshAt) return true;
+    return Date.now() - lastRefreshAt >= IDLE_STALE_MS;
+  }
+
+  function noteActivity() {
+    lastActivityAt = Date.now();
+  }
+
+  function refreshIfStale() {
+    if (document.visibilityState === "hidden") return;
+    if (!dataIsStale()) return;
+    refresh();
+  }
+
+  function startRefreshLoop() {
+    if (refreshTimer) window.clearInterval(refreshTimer);
+    refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      refresh();
+    }, REFRESH_MS);
+
+    const onMaybeResume = () => {
+      noteActivity();
+      refreshIfStale();
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") onMaybeResume();
+    });
+    window.addEventListener("pageshow", onMaybeResume);
+    window.addEventListener("focus", onMaybeResume);
+
+    for (const evt of ["pointerdown", "touchstart", "keydown", "scroll"]) {
+      window.addEventListener(
+        evt,
+        () => {
+          const wasIdle = Date.now() - lastActivityAt >= IDLE_STALE_MS;
+          noteActivity();
+          if (wasIdle) refreshIfStale();
+        },
+        { passive: true, capture: true }
+      );
     }
   }
 
@@ -1920,7 +1980,7 @@
       ensureFirmsLayers();
       applyLayerChecks();
       refresh();
-      setInterval(refresh, REFRESH_MS);
+      startRefreshLoop();
     };
 
     try {

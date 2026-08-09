@@ -118,12 +118,16 @@ async function runExtraTests(test, testAsync) {
     }
   });
 
-  test("Worker source exposes /fires and /firms only", () => {
+  test("Worker source exposes fires firms bombers infoca", () => {
     const src = fs.readFileSync(path.join(root, "worker", "src", "index.js"), "utf8");
     assert.ok(src.includes('pathname === "/firms"'));
     assert.ok(src.includes('pathname === "/fires"'));
+    assert.ok(src.includes('pathname === "/bombers"'));
+    assert.ok(src.includes('pathname === "/infoca"'));
     assert.ok(src.includes("firmsToGeoJSON"));
     assert.ok(src.includes("FOGOS_UPSTREAM") || src.includes("api-lb.fogos.pt"));
+    assert.ok(src.includes("BOMBERS_QUERY") || src.includes("ACTUACIONS_URGENTS"));
+    assert.ok(src.includes("INFOCA_QUERY") || src.includes("AN_INCIDENTES_PRO"));
     assert.ok(src.includes("https://fuegos.guaka.org"), "custom domain in ALLOWED_ORIGINS");
   });
 

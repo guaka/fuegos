@@ -2,12 +2,22 @@
  * CORS proxy for Fuegos Vivos (fuegos.guaka.org / github.io).
  * Locked upstreams — not an open proxy.
  *
- * GET  /fires  → fogos.pt fires JSON
- * GET  /firms  → NASA FIRMS VIIRS Europe CSV → Spain GeoJSON
- * OPTIONS /*   → CORS preflight
+ * GET  /fires   → fogos.pt fires JSON
+ * GET  /firms   → NASA FIRMS VIIRS Europe CSV → Spain GeoJSON
+ * GET  /bombers → Bombers CAT vegetation incidents (GeoJSON)
+ * GET  /infoca  → Andalucía INFOCA open incidents (GeoJSON)
+ * OPTIONS /*    → CORS preflight
  */
 
 const FOGOS_UPSTREAM = "https://api-lb.fogos.pt/new/fires";
+
+const BOMBERS_QUERY =
+  "https://services7.arcgis.com/ZCqVt1fRXwwK6GF4/arcgis/rest/services/" +
+  "ACTUACIONS_URGENTS_online_PRO_AMB_FASE_VIEW/FeatureServer/0/query";
+
+const INFOCA_QUERY =
+  "https://utility.arcgis.com/usrsvcs/servers/d6d1c0079ddd4c7f8876d58e13fcf1ac/" +
+  "rest/services/INFOCA/AN_INCIDENTES_PRO/FeatureServer/2/query";
 
 const FIRMS_CSVS = [
   "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Europe_24h.csv",
@@ -28,6 +38,8 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:8765",
   "http://localhost:8765",
 ]);
+
+const UA = "FuegosVivos/0.1 (+https://fuegos.guaka.org/; proxy)";
 
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
@@ -78,7 +90,7 @@ function confRank(c) {
 }
 
 /**
- * Filter Europe FIRMS rows to Spain, drop low confidence, cluster ~0.05°.
+ * Filter Europe FIRMS rows to Spain, drop low confidence, cluster.
  * @returns {GeoJSON.FeatureCollection}
  */
 function firmsToGeoJSON(allRows) {
@@ -144,9 +156,9 @@ function firmsToGeoJSON(allRows) {
   };
 }
 
-async function proxyFogos(request, url) {
+async function cachedJsonProxy(request, url, cachePath, upstreamUrl, maxAgeSec) {
   const cache = caches.default;
-  const cacheKey = new Request(new URL("/fires", url.origin).toString(), { method: "GET" });
+  const cacheKey = new Request(new URL(cachePath, url.origin).toString(), { method: "GET" });
   const cached = await cache.match(cacheKey);
   if (cached) {
     const hit = new Response(cached.body, cached);
@@ -155,26 +167,63 @@ async function proxyFogos(request, url) {
     return hit;
   }
 
-  const upstream = await fetch(FOGOS_UPSTREAM, {
+  const upstream = await fetch(upstreamUrl, {
     headers: {
-      Accept: "application/json",
-      "User-Agent": "FuegosVivos/0.1 (+https://fuegos.guaka.org/; proxy)",
+      Accept: "application/json, application/geo+json",
+      "User-Agent": UA,
     },
   });
 
   const body = await upstream.arrayBuffer();
+  const contentType = upstream.headers.get("Content-Type") || "application/json; charset=utf-8";
   const res = new Response(body, {
     status: upstream.status,
     headers: {
       ...corsHeaders(request),
-      "Content-Type": upstream.headers.get("Content-Type") || "application/json",
-      "Cache-Control": "public, max-age=60",
+      "Content-Type": contentType,
+      "Cache-Control": `public, max-age=${maxAgeSec}`,
       "X-Proxy-Cache": "MISS",
     },
   });
 
   if (upstream.ok) cache.put(cacheKey, res.clone());
   return res;
+}
+
+function bombersUpstreamUrl() {
+  const q = new URLSearchParams({
+    where: "TAL_COD_ALARMA1='IV'",
+    outFields: "*",
+    returnGeometry: "true",
+    outSR: "4326",
+    resultRecordCount: "2000",
+    f: "geojson",
+  });
+  return `${BOMBERS_QUERY}?${q}`;
+}
+
+function infocaUpstreamUrl() {
+  const q = new URLSearchParams({
+    where: "ESTADO IN ('ACTIVO','CONTROLADO','ESTABILIZADO','DECLARADO')",
+    outFields: "*",
+    returnGeometry: "true",
+    outSR: "4326",
+    resultRecordCount: "2000",
+    f: "geojson",
+  });
+  return `${INFOCA_QUERY}?${q}`;
+}
+
+async function proxyFogos(request, url) {
+  return cachedJsonProxy(request, url, "/fires", FOGOS_UPSTREAM, 60);
+}
+
+async function proxyBombers(request, url) {
+  return cachedJsonProxy(request, url, "/bombers", bombersUpstreamUrl(), 90);
+}
+
+async function proxyInfoca(request, url) {
+  return cachedJsonProxy(request, url, "/infoca", infocaUpstreamUrl(), 90);
 }
 
 async function proxyFirms(request, url) {
@@ -229,6 +278,8 @@ export default {
 
     try {
       if (url.pathname === "/firms") return await proxyFirms(request, url);
+      if (url.pathname === "/bombers") return await proxyBombers(request, url);
+      if (url.pathname === "/infoca") return await proxyInfoca(request, url);
       if (url.pathname === "/fires" || url.pathname === "/") return await proxyFogos(request, url);
     } catch (err) {
       return new Response(JSON.stringify({ error: String(err && err.message ? err.message : err) }), {
@@ -240,7 +291,7 @@ export default {
       });
     }
 
-    return new Response("Not Found — try GET /firms or GET /fires", {
+    return new Response("Not Found — try GET /firms /fires /bombers /infoca", {
       status: 404,
       headers: { ...corsHeaders(request), "content-type": "text/plain; charset=utf-8" },
     });
