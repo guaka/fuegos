@@ -38,6 +38,36 @@ async function runExtraTests(test, testAsync) {
     assert.strictEqual(FF.statusClass("Encerrada"), "conclusao");
   });
 
+  test("statusClass maps Catalan / INFOCA labels", () => {
+    assert.strictEqual(FF.statusClass("Controlat"), "controlado");
+    assert.strictEqual(FF.statusClass("Actiu"), "activo");
+    assert.strictEqual(FF.statusClass("Extingit"), "conclusao");
+    assert.strictEqual(FF.statusClass("DECLARADO"), "activo");
+    assert.strictEqual(FF.statusClass("ACTIVO"), "activo");
+  });
+
+  test("filterBombersRows keeps open CAT fires and drops Extingit / bad coords", () => {
+    const sample = loadJson("bombers-sample.geojson");
+    const now = 1786290000000 + 3600e3;
+    const fires = FF.filterBombersRows(sample, now);
+    assert.strictEqual(fires.length, 1);
+    assert.strictEqual(fires[0].source, "Bombers");
+    assert.strictEqual(fires[0].municipality, "Barcelona");
+    assert.strictEqual(fires[0].statusClass, "controlado");
+    assert.strictEqual(fires[0].terrain, 3);
+  });
+
+  test("filterInfocaRows keeps ACTIVO and drops EXTINGUIDO", () => {
+    const sample = loadJson("infoca-sample.geojson");
+    const now = 1786233600000 + 3600e3;
+    const fires = FF.filterInfocaRows(sample, now);
+    assert.strictEqual(fires.length, 1);
+    assert.strictEqual(fires[0].source, "INFOCA");
+    assert.strictEqual(fires[0].municipality, "Niebla");
+    assert.strictEqual(fires[0].statusClass, "activo");
+    assert.strictEqual(fires[0].aerial, 2);
+  });
+
   test("parseFogosDateMs parses DD-MM-YYYY", () => {
     const ms = FF.parseFogosDateMs("09-08-2026", "14:30");
     assert.ok(ms > 0);

@@ -22,6 +22,8 @@
     reduceJcylRows,
     filterGaliciaRows,
     filterFogosRows,
+    filterBombersRows,
+    filterInfocaRows,
     jcylWhereClause,
     isoDate,
     daysAgo,
@@ -29,9 +31,11 @@
   } = FF;
 
   /**
-   * Sidebar: live CyL + Galicia + one national FIRMS sat card (no per-CCAA fly-to spam).
+   * Sidebar: live CyL + Galicia + CAT + AND + PT + national FIRMS.
    */
   const GALICIA_BBOX = [-9.35, 41.78, -6.7, 43.8];
+  const CATALUNYA_BBOX = [0.05, 40.45, 3.35, 42.9];
+  const ANDALUCIA_BBOX = [-7.55, 35.95, -1.55, 38.75];
 
   const SITE_HOST = "fuegos.guaka.org";
   const TITLE_HOME = SITE_HOST;
@@ -46,9 +50,13 @@
   const PROXY_ORIGIN = "https://fuegos-proxy.crew.workers.dev";
   const FIRMS_URL = `${PROXY_ORIGIN}/firms`;
   const FOGOS_URL = `${PROXY_ORIGIN}/fires`;
+  const BOMBERS_URL = `${PROXY_ORIGIN}/bombers`;
+  const INFOCA_URL = `${PROXY_ORIGIN}/infoca`;
   /** Same-origin snapshots from Pages build — used if workers.dev is blocked (Lockdown / blockers). */
   const FIRMS_FALLBACK_URL = "./data/firms.geojson";
   const FOGOS_FALLBACK_URL = "./data/fires.json";
+  const BOMBERS_FALLBACK_URL = "./data/bombers.geojson";
+  const INFOCA_FALLBACK_URL = "./data/infoca.geojson";
   const EFFIS_WMS = "https://maps.effis.emergency.copernicus.eu/effis";
 
   const STREET_TILE_TMPL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png";
@@ -83,6 +91,8 @@
     layersPanel: document.getElementById("layers-panel"),
     layerOficiales: document.getElementById("layer-oficiales"),
     layerGalicia: document.getElementById("layer-galicia"),
+    layerCatalunya: document.getElementById("layer-catalunya"),
+    layerAndalucia: document.getElementById("layer-andalucia"),
     layerPortugal: document.getElementById("layer-portugal"),
     layerFirms: document.getElementById("layer-firms"),
     layerHotspots: document.getElementById("layer-hotspots"),
@@ -863,6 +873,16 @@
     return filterFogosRows(payload);
   }
 
+  async function fetchBombersFires() {
+    const payload = await fetchJsonWithFallback(BOMBERS_URL, BOMBERS_FALLBACK_URL, "Bombers", 18_000);
+    return filterBombersRows(payload);
+  }
+
+  async function fetchInfocaFires() {
+    const payload = await fetchJsonWithFallback(INFOCA_URL, INFOCA_FALLBACK_URL, "INFOCA", 18_000);
+    return filterInfocaRows(payload);
+  }
+
   function clearMarkers() {
     for (const m of markers.values()) {
       if (mapKind === "leaflet" && map) {
@@ -877,6 +897,12 @@
   function layerAllows(fire) {
     if (fire.source === SOURCE.GALICIA) {
       return !!(els.layerGalicia && els.layerGalicia.checked);
+    }
+    if (fire.source === SOURCE.BOMBERS) {
+      return !!(els.layerCatalunya && els.layerCatalunya.checked);
+    }
+    if (fire.source === SOURCE.INFOCA) {
+      return !!(els.layerAndalucia && els.layerAndalucia.checked);
     }
     if (fire.source === SOURCE.FOGOS) {
       return !!(els.layerPortugal && els.layerPortugal.checked);
@@ -1375,12 +1401,73 @@
     });
   }
 
+  function renderRegionalSection(opts) {
+    const { title, fires: regionFires, badgeKind, badgeLabel, emptyText, layerEl, bbox, label } = opts;
+    const head = document.createElement("p");
+    head.className = "panel-title";
+    head.textContent = title;
+    appendListItem(head);
+
+    if (!regionFires.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = emptyText;
+      appendListItem(empty);
+      if (bbox) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "region-card is-sat";
+        btn.innerHTML = `
+          <div class="region-head">
+            <h3 class="region-name">${escapeHtml(label)}</h3>
+            <span class="source-badge ${badgeKind}">${escapeHtml(badgeLabel)}</span>
+          </div>
+          <p class="region-meta">Pulsa para acercar el mapa</p>
+        `;
+        btn.addEventListener("click", () => {
+          flyToBbox(bbox, label);
+          showSidebar(true);
+        });
+        appendListItem(btn);
+      }
+      return;
+    }
+
+    const summary = document.createElement("button");
+    summary.type = "button";
+    summary.className = "region-card";
+    const activos = regionFires.filter((f) => f.statusClass === "activo").length;
+    summary.innerHTML = `
+      <div class="region-head">
+        <h3 class="region-name">${escapeHtml(label)}</h3>
+        <span class="source-badge ${badgeKind}">${escapeHtml(badgeLabel)}</span>
+      </div>
+      <p class="region-meta"><strong>${regionFires.length}</strong> en curso${
+        activos ? ` · ${activos} activo${activos === 1 ? "" : "s"}` : ""
+      }</p>
+    `;
+    summary.addEventListener("click", () => {
+      if (layerEl && !layerEl.checked) {
+        layerEl.checked = true;
+        layerEl.closest(".layer-item")?.classList.toggle("is-on", true);
+        renderSidebar();
+        renderMarkers();
+        updateTicker();
+      }
+      flyToFires(regionFires);
+      showSidebar(true);
+    });
+    appendListItem(summary);
+  }
+
   function renderRegionOverview(list) {
     els.sidebar.classList.remove("is-detail");
     els.sidebar.setAttribute("aria-label", "Resumen por región");
 
     const cylFires = list.filter((f) => f.source === SOURCE.JCYL);
     const gaFires = list.filter((f) => f.source === SOURCE.GALICIA);
+    const catFires = list.filter((f) => f.source === SOURCE.BOMBERS);
+    const andFires = list.filter((f) => f.source === SOURCE.INFOCA);
     const ptFires = list.filter((f) => f.source === SOURCE.FOGOS);
 
     const nation = document.createElement("p");
@@ -1397,12 +1484,34 @@
     appendListItem(gaTitle);
     renderGaliciaCard(gaFires);
 
+    renderRegionalSection({
+      title: "Cataluña · Bombers",
+      fires: catFires,
+      badgeKind: "despacho",
+      badgeLabel: "Bombers",
+      emptyText: "No hay incendios de vegetación abiertos en Bombers ahora.",
+      layerEl: els.layerCatalunya,
+      bbox: CATALUNYA_BBOX,
+      label: "Cataluña",
+    });
+
+    renderRegionalSection({
+      title: "Andalucía · INFOCA",
+      fires: andFires,
+      badgeKind: "oficial",
+      badgeLabel: "INFOCA",
+      emptyText: "No hay incidentes INFOCA abiertos ahora.",
+      layerEl: els.layerAndalucia,
+      bbox: ANDALUCIA_BBOX,
+      label: "Andalucía",
+    });
+
     renderPortugalSection(ptFires);
 
     const sat = document.createElement("p");
     sat.className = "overview-note";
     sat.innerHTML =
-      "Fuera de CyL no hay parte diario nacional abierto: el mapa muestra <strong>detecciones FIRMS</strong> (calor satélite). Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a>. Portugal: <a href=\"https://fogos.pt\" rel=\"noopener\" target=\"_blank\">fogos.pt</a>.";
+      "Cobertura regional: JCyL, Galicia, Bombers (CAT), INFOCA (AND), fogos.pt. Resto de España: <strong>FIRMS</strong> satélite. Próximo: FIDIAS (C-LM), 112CV.";
     appendListItem(sat);
   }
 
@@ -1440,12 +1549,16 @@
     const visible = filteredFires();
     const cyl = visible.filter((f) => f.source === SOURCE.JCYL).length;
     const ga = visible.filter((f) => f.source === SOURCE.GALICIA).length;
+    const cat = visible.filter((f) => f.source === SOURCE.BOMBERS).length;
+    const andal = visible.filter((f) => f.source === SOURCE.INFOCA).length;
     const pt = visible.filter((f) => f.source === SOURCE.FOGOS).length;
     const firmsOn = !(els.layerFirms && !els.layerFirms.checked);
     const bits = [];
     if (firmsOn && firmsCount) bits.push(`${firmsCount} sat`);
     if (cyl) bits.push(`${cyl} CyL`);
     if (ga) bits.push(`${ga} Gal`);
+    if (cat) bits.push(`${cat} CAT`);
+    if (andal) bits.push(`${andal} AND`);
     if (pt) bits.push(`${pt} PT`);
     const clock = formatClock(new Date());
     const line = bits.length ? `${bits.join(" · ")} · ${clock}` : `Actualizando… · ${clock}`;
@@ -1469,6 +1582,24 @@
         short: "Aviso",
         caveat: "Aviso colaborativo — no es un parte oficial de extinción.",
         titleTag: "aviso incendios.gal",
+      };
+    }
+    if (fire.source === SOURCE.BOMBERS) {
+      return {
+        kind: "despacho",
+        label: "Despacho · Bombers",
+        short: "Bombers",
+        caveat: "Actuación Bombers (Generalitat) — no sustituye 112 / Protecció Civil.",
+        titleTag: "despacho Bombers CAT",
+      };
+    }
+    if (fire.source === SOURCE.INFOCA) {
+      return {
+        kind: "oficial",
+        label: "Oficial · INFOCA",
+        short: "INFOCA",
+        caveat: "Incidente INFOCA (Junta de Andalucía / EMA) vía cuadro de mando público.",
+        titleTag: "INFOCA Andalucía",
       };
     }
     if (fire.source === SOURCE.FOGOS) {
@@ -1506,6 +1637,16 @@
         ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">${SOURCE.GALICIA}</a> (avisos cidadáns)`
         : SOURCE.GALICIA;
     }
+    if (fire.source === SOURCE.BOMBERS) {
+      return fire.detailUrl
+        ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">Bombers CAT</a>`
+        : "Bombers CAT";
+    }
+    if (fire.source === SOURCE.INFOCA) {
+      return fire.detailUrl
+        ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">INFOCA / EMA</a>`
+        : "INFOCA";
+    }
     if (fire.source === SOURCE.FOGOS) {
       return fire.detailUrl
         ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">${SOURCE.FOGOS}</a> (ANEPC)`
@@ -1519,17 +1660,23 @@
     setHeaderStatus("Actualizando…");
     refreshInFlight = (async () => {
     try {
-      const [esResult, gaResult, ptResult, firmsResult] = await Promise.allSettled([
+      const [esResult, gaResult, catResult, andResult, ptResult, firmsResult] = await Promise.allSettled([
         fetchJcylFires(),
         fetchGaliciaFires(),
+        fetchBombersFires(),
+        fetchInfocaFires(),
         fetchFogosPtFires(),
         fetchFirmsHotspots(),
       ]);
       const esFires = esResult.status === "fulfilled" ? esResult.value : [];
       const gaFires = gaResult.status === "fulfilled" ? gaResult.value : [];
+      const catFires = catResult.status === "fulfilled" ? catResult.value : [];
+      const andFires = andResult.status === "fulfilled" ? andResult.value : [];
       const ptFires = ptResult.status === "fulfilled" ? ptResult.value : [];
       if (esResult.status === "rejected") console.error(esResult.reason);
       if (gaResult.status === "rejected") console.error(gaResult.reason);
+      if (catResult.status === "rejected") console.error(catResult.reason);
+      if (andResult.status === "rejected") console.error(andResult.reason);
       if (ptResult.status === "rejected") console.error(ptResult.reason);
       if (firmsResult.status === "rejected") console.error(firmsResult.reason);
 
@@ -1539,10 +1686,12 @@
         setFirmsData({ type: "FeatureCollection", features: [] });
       }
 
-      fires = [...esFires, ...gaFires, ...ptFires].sort(compareFires);
+      fires = [...esFires, ...gaFires, ...catFires, ...andFires, ...ptFires].sort(compareFires);
       const notes = [];
       if (esResult.status === "rejected") notes.push("CyL");
       if (gaResult.status === "rejected") notes.push("Gal");
+      if (catResult.status === "rejected") notes.push("CAT");
+      if (andResult.status === "rejected") notes.push("AND");
       if (ptResult.status === "rejected") notes.push("PT");
       if (firmsResult.status === "rejected") notes.push("sat");
 
@@ -1554,13 +1703,6 @@
       lastRefreshAt = Date.now();
       if (notes.length) {
         setHeaderStatus(`${els.ticker.textContent} · falló ${notes.join("/")}`);
-      } else if (
-        ptResult.status === "fulfilled" &&
-        ptFires.length === 0 &&
-        firmsResult.status === "fulfilled" &&
-        firmsCount === 0
-      ) {
-        /* keep ticker from updateTicker */
       }
 
       const hashId = currentHash();
@@ -1572,6 +1714,8 @@
         !fires.length &&
         esResult.status === "rejected" &&
         gaResult.status === "rejected" &&
+        catResult.status === "rejected" &&
+        andResult.status === "rejected" &&
         ptResult.status === "rejected" &&
         firmsResult.status === "rejected"
       ) {
@@ -1921,6 +2065,24 @@
         updateTicker();
       });
     }
+    if (els.layerCatalunya) {
+      els.layerCatalunya.addEventListener("change", () => {
+        const on = els.layerCatalunya.checked;
+        els.layerCatalunya.closest(".layer-item")?.classList.toggle("is-on", on);
+        renderSidebar();
+        renderMarkers();
+        updateTicker();
+      });
+    }
+    if (els.layerAndalucia) {
+      els.layerAndalucia.addEventListener("change", () => {
+        const on = els.layerAndalucia.checked;
+        els.layerAndalucia.closest(".layer-item")?.classList.toggle("is-on", on);
+        renderSidebar();
+        renderMarkers();
+        updateTicker();
+      });
+    }
     if (els.layerPortugal) {
       els.layerPortugal.addEventListener("change", () => {
         const on = els.layerPortugal.checked;
@@ -1940,6 +2102,8 @@
     [
       els.layerOficiales,
       els.layerGalicia,
+      els.layerCatalunya,
+      els.layerAndalucia,
       els.layerPortugal,
       els.layerFirms,
       els.layerHotspots,

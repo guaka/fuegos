@@ -1,0 +1,48 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "geometry": { "type": "Point", "coordinates": [2.17, 41.39] },
+      "properties": {
+        "TAL_COD_ALARMA1": "IV",
+        "TAL_DESC_ALARMA2": "Incendi vegetació forestal",
+        "COM_FASE": "Controlat",
+        "ACT_DAT_FI": null,
+        "ACT_NUM_VEH": 3,
+        "MUNICIPI_SIG": "Barcelona",
+        "OBJECTID": 1001,
+        "DATA_ACT": 1786290000000,
+        "ACT_DAT_INICI": 1786280000000,
+        "ACT_URGENT": "S"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 2,
+      "geometry": { "type": "Point", "coordinates": [1.54, 3.05] },
+      "properties": {
+        "TAL_COD_ALARMA1": "IV",
+        "COM_FASE": "Controlat",
+        "ACT_DAT_FI": null,
+        "MUNICIPI_SIG": "BadCoords",
+        "OBJECTID": 1002,
+        "DATA_ACT": 1786290000000
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 3,
+      "geometry": { "type": "Point", "coordinates": [2.8, 41.98] },
+      "properties": {
+        "TAL_COD_ALARMA1": "IV",
+        "COM_FASE": "Extingit",
+        "ACT_DAT_FI": null,
+        "MUNICIPI_SIG": "Girona",
+        "OBJECTID": 1003,
+        "DATA_ACT": 1786290000000
+      }
+    }
+  ]
+}

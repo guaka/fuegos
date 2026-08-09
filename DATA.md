@@ -7,10 +7,15 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 | Fuente | Ámbito | Tipo | En vivo | CORS navegador | En Fuegos Vivos | Notas |
 |--------|--------|------|---------|----------------|-----------------|-------|
 | [JCyL incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) | Castilla y León (9 provincias) | Partes oficiales (JSON ODS) | Sí (partes diarios) | Sí (`*`) | **Sí** — puntos + resumen | Filtramos: sin `fecha_extinguido`, estado ACTIVO/CONTROLADO/ESTABILIZADO, parte ≤3 días |
+| [Bombers CAT](https://experience.arcgis.com/experience/f6172fd2d6974bc0a8c51e3a6bc2a735) ArcGIS | Cataluña | Actuaciones vegetación (GeoJSON) | Sí | Sí (`*`) / Worker | **Sí** — vía proxy `/bombers` | `TAL_COD_ALARMA1=IV`; sin Extingit; bbox CAT |
+| [INFOCA / EMA](https://laagencia.maps.arcgis.com/apps/dashboards/87a5fe2d397e4140add84f50d8bdafd3) | Andalucía | Incidentes abiertos (GeoJSON) | Sí | Worker | **Sí** — vía proxy `/infoca` | Filtra EXTINGUIDO; estados ACTIVO/CONTROLADO/… |
 | [incendios.gal](https://incendios.gal/) API | Galicia | Avisos cidadáns (JSON) | Sí | Sí (`*`) | **Sí** — puntos Galicia | No oficial; filtramos tipos lume/fume/queimada/medios/afectación, ≤14 días |
 | [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) WMS | Europa (toda España) | Hotspots VIIRS + área quemada | Sí (satélite) | Sí (teselas WMS) | **Sí** — capa opcional | Detecciones, **no** despachos de extinción |
 | [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) VIIRS Europe CSV | Europa → filtrado ES | Hotspots satélite (puntos) | Sí (24h) | **No** (CORS) | **Sí** — vía proxy Worker `/firms` (+ fallback `data/firms.geojson`) | Suomi-NPP + NOAA-20 + NOAA-21; confianza nominal/high; cluster ~0.02° |
 | [fogos.pt](https://fogos.pt) / `api-lb.fogos.pt` | Portugal | Despachos ANEPC (JSON) | Sí | **No** (CORS) desde github.io | **Sí** — vía proxy Worker `/fires` (+ fallback `data/fires.json`) | Naturaleza `31xx`; excluye Conclusão/Encerrada |
+| FIDIAS (C-LM) | Castilla-La Mancha | HTML listado | Sí | Scrape | **No** (siguiente) | Sin coords → centroides municipio; ver [`data/REGIONAL.md`](./data/REGIONAL.md) |
+| 112CV mapas | C. Valenciana | JSF / emergencias | Sí | Opaco | **No** (candidato) | Reverse-engineer; peers lo usan |
+| EUMETSAT SEVIRI FRP | España | Satélite geoestacionario 15 min | Sí | Server | **No** (candidato) | Rellena huecos entre pases VIIRS |
 | [ppetru/incidents-pt](https://github.com/ppetru/incidents-pt) | Portugal | Espejo scrape ANEPC → JSON en GitHub | ~horario | Sí (raw GitHub) | No (candidato) | Incluye todos los incidentes; filtrar incendios (`Natureza` 31xx) |
 | ICNF `fogos.icnf.pt` webservice | Portugal | Inventario/rural (XML grande) | Histórico / pesado | Variable | No | ~MB de XML; mal encaje para SPA en vivo |
 | ANEPC / prociv ArcGIS | Portugal | Oficial GIS | Sí | A menudo **no** | No | Auth / CORS hostiles para SPA |
@@ -26,6 +31,18 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 - **Qué usamos:** municipio, provincia, posición, situación, fechas de inicio/parte/extinción, superficie, medios de extinción (texto → operativos / terrestres / aéreos).
 - **Criterio “en curso”:** `fecha_extinguido` vacía; situación en `ACTIVO`, `CONTROLADO`, `ESTABILIZADO`; último parte en los últimos 3 días.
 - **Por qué es especial:** una de las pocas CCAA con API abierta JSON usable directamente desde el navegador.
+
+### Bombers (Cataluña)
+
+- **Proxy:** `https://fuegos-proxy.crew.workers.dev/bombers` → ArcGIS `ACTUACIONS_URGENTS` GeoJSON.
+- **Qué usamos:** alarmas `IV` (vegetación) abiertas (sin Extingit / sin `ACT_DAT_FI`), coordenadas WGS84, fase (`COM_FASE`), vehículos.
+- **Fallback:** `./data/bombers.geojson`.
+
+### INFOCA (Andalucía)
+
+- **Proxy:** `https://fuegos-proxy.crew.workers.dev/infoca` → FeatureServer Incidentes (dashboard EMA).
+- **Qué usamos:** estados ACTIVO / CONTROLADO / ESTABILIZADO / DECLARADO; medios vehículos/aéreos.
+- **Fallback:** `./data/infoca.geojson`.
 
 ### incendios.gal (Galicia, cidadán)
 

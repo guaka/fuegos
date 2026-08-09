@@ -8,6 +8,8 @@ Small CORS proxy so the SPA on `fuegos.guaka.org` / GitHub Pages can read fogos.
 |------|----------|
 | `GET /fires` | `https://api-lb.fogos.pt/new/fires` |
 | `GET /firms` | NASA FIRMS VIIRS Europe CSVs (NPP + NOAA-20 + NOAA-21) → Spain GeoJSON |
+| `GET /bombers` | Bombers CAT vegetation incidents (GeoJSON) |
+| `GET /infoca` | Andalucía INFOCA open incidents (GeoJSON) |
 
 CORS for `https://fuegos.guaka.org`, `https://guaka.github.io`, and local static servers.
 

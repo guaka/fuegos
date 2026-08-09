@@ -1282,7 +1282,8 @@
       <p class="legend-hint">Naranja satélite = detecciones FIRMS en toda España (no partes oficiales). Puntos CyL = oficiales; Galicia = avisos cidadáns. Pulsa un punto para el detalle.</p>
       <ul class="fire-list" id="fire-list"></ul>
       <p class="footnote">
-        ES: partes JCyL (CyL) + avisos cidadáns <a href="https://incendios.gal/" rel="noopener" target="_blank">incendios.gal</a> (Galicia).
+        ES: partes JCyL (CyL) + avisos <a href="https://incendios.gal/" rel="noopener" target="_blank">incendios.gal</a> (Galicia)
+        + Bombers (CAT) + INFOCA (AND).
         Resto de España: detecciones satélite FIRMS (y EFFIS opcional).
         Portugal: despachos <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a>.
         En iPhone con Modo de aislamiento el mapa usa teselas (sin WebGL).
@@ -1316,6 +1317,8 @@
         <div class="layers-body">
           <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> Oficiales CyL (ES)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-galicia" checked /> Galicia (incendios.gal)</label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-catalunya" checked /> Cataluña (Bombers)</label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-andalucia" checked /> Andalucía (INFOCA)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-portugal" checked /> Portugal (fogos.pt)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-firms" checked /> Detecciones satélite (FIRMS)</label>
           <label class="layer-item"><input type="checkbox" id="layer-hotspots" /> Teselas EFFIS</label>
@@ -1369,6 +1372,20 @@
           <li class="about-source">
             <span class="about-badge es">ES</span>
             <div>
+              <strong>Bombers (Cataluña)</strong>
+              <p>Actuaciones de vegetación abiertas (ArcGIS público Bombers).</p>
+            </div>
+          </li>
+          <li class="about-source">
+            <span class="about-badge es">ES</span>
+            <div>
+              <strong>INFOCA (Andalucía)</strong>
+              <p>Incidentes abiertos del dispositivo INFOCA / EMA (dashboard público).</p>
+            </div>
+          </li>
+          <li class="about-source">
+            <span class="about-badge es">ES</span>
+            <div>
               <strong>incendios.gal</strong>
               <p>Avisos colaborativos en Galicia (no oficiales).</p>
             </div>
@@ -1388,6 +1405,8 @@
         <h2 id="license-title">Fuentes y licencia</h2>
         <ul class="about-links">
           <li><a href="https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/" rel="noopener">JCyL incendios-forestales</a> — partes oficiales CyL</li>
+          <li><a href="https://experience.arcgis.com/experience/f6172fd2d6974bc0a8c51e3a6bc2a735" rel="noopener">Bombers CAT</a> — actuaciones vegetación</li>
+          <li><a href="https://laagencia.maps.arcgis.com/apps/dashboards/87a5fe2d397e4140add84f50d8bdafd3" rel="noopener">INFOCA / EMA</a> — Andalucía</li>
           <li><a href="https://incendios.gal/" rel="noopener">incendios.gal</a> — avisos cidadáns</li>
           <li><a href="https://forest-fire.emergency.copernicus.eu/" rel="noopener">EFFIS / Copernicus</a> + NASA FIRMS — satélite</li>
           <li><a href="https://fogos.pt" rel="noopener">fogos.pt</a> — despachos Portugal</li>

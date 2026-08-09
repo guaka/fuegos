@@ -39,6 +39,41 @@ within `GALICIA_LOOKBACK_DAYS`, labeled as citizen (not official).
 - **WHEN** `filterGaliciaRows` runs
 - **THEN** a fire with `source: "incendios.gal"` MUST be returned
 
+### Requirement: Cataluña Bombers vegetation actuations
+
+Catalonia points MUST come from Worker `GET /bombers` (Bombers ArcGIS FeatureServer).
+Only vegetation alarms (`TAL_COD_ALARMA1 = IV`) that are still open (no end date / not Extingit)
+with coordinates inside Catalonia MUST be shown.
+
+#### Scenario: Keep Controlat IV
+
+- **GIVEN** a GeoJSON feature with `TAL_COD_ALARMA1` IV, `COM_FASE` Controlat, coords in CAT
+- **WHEN** `filterBombersRows` runs
+- **THEN** a fire with `source: "Bombers"` and `country: "ES"` MUST be returned
+
+#### Scenario: Drop Extingit or corrupt coordinates
+
+- **GIVEN** `COM_FASE` Extingit OR coordinates outside Spain/CAT
+- **WHEN** `filterBombersRows` runs
+- **THEN** the feature MUST be excluded
+
+### Requirement: Andalucía INFOCA open incidents
+
+Andalucía points MUST come from Worker `GET /infoca`. Only open estados
+(ACTIVO/CONTROLADO/ESTABILIZADO/DECLARADO) with coordinates MUST be shown.
+
+#### Scenario: Keep ACTIVO INFOCA
+
+- **GIVEN** a GeoJSON feature with `ESTADO` ACTIVO and WGS84 point in Andalucía
+- **WHEN** `filterInfocaRows` runs
+- **THEN** a fire with `source: "INFOCA"` MUST be returned
+
+#### Scenario: Drop EXTINGUIDO
+
+- **GIVEN** `ESTADO` EXTINGUIDO
+- **WHEN** `filterInfocaRows` runs
+- **THEN** the feature MUST be excluded
+
 ### Requirement: Portugal fogos.pt open rural fires
 
 Portugal points MUST be loaded via the Worker proxy (not `api-lb.fogos.pt` from the browser).

@@ -43,12 +43,22 @@ jobs:
           curl -fsSL --max-time 90 -A 'FuegosVivos-PagesBuild' \
             "https://fuegos-proxy.crew.workers.dev/firms" -o _site/data/firms.geojson \
             || echo '{"type":"FeatureCollection","features":[]}' > _site/data/firms.geojson
+          curl -fsSL --max-time 45 -A 'FuegosVivos-PagesBuild' \
+            "https://fuegos-proxy.crew.workers.dev/bombers" -o _site/data/bombers.geojson \
+            || echo '{"type":"FeatureCollection","features":[]}' > _site/data/bombers.geojson
+          curl -fsSL --max-time 45 -A 'FuegosVivos-PagesBuild' \
+            "https://fuegos-proxy.crew.workers.dev/infoca" -o _site/data/infoca.geojson \
+            || echo '{"type":"FeatureCollection","features":[]}' > _site/data/infoca.geojson
           python3 - <<'PY'
           import json
           fires=json.load(open("_site/data/fires.json"))
           firms=json.load(open("_site/data/firms.geojson"))
           assert "data" in fires or isinstance(fires, list), fires
           assert firms.get("type")=="FeatureCollection", firms
+          for name in ("bombers","infoca"):
+            g=json.load(open(f"_site/data/{name}.geojson"))
+            assert g.get("type")=="FeatureCollection", name
+            print(f"fallback {name}", len(g.get("features", [])))
           print("fallback fires rows", len(fires.get("data", fires if isinstance(fires,list) else [])))
           print("fallback firms", len(firms.get("features", [])))
           PY

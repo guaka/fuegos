@@ -1,0 +1,42 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 10,
+      "geometry": { "type": "Point", "coordinates": [-6.74, 37.25] },
+      "properties": {
+        "ESRI_OID": 10,
+        "ESTADO": "ACTIVO",
+        "TERMINO_MUNICIPAL": "Niebla",
+        "PROVINCIA": "HUELVA",
+        "TIPO_INCIDENTE": "IIFF INCENDIOS FORESTALES",
+        "FECHA": 1786233600000,
+        "HORA": "18:00:00",
+        "VEHICULOS": 4,
+        "MEDIOS_AEREOS": 2,
+        "GRUPOS_ESPECIALISTAS": 1,
+        "BRICAS": 0,
+        "TECNICOS": 0,
+        "UMIF": 0,
+        "GRUPOS_APOYO": 0,
+        "UNASIF_ACO": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 11,
+      "geometry": { "type": "Point", "coordinates": [-3.6, 37.2] },
+      "properties": {
+        "ESRI_OID": 11,
+        "ESTADO": "EXTINGUIDO",
+        "TERMINO_MUNICIPAL": "Granada",
+        "PROVINCIA": "GRANADA",
+        "FECHA": 1786233600000,
+        "HORA": "12:00:00",
+        "VEHICULOS": 0,
+        "MEDIOS_AEREOS": 0
+      }
+    }
+  ]
+}
