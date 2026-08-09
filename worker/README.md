@@ -1,6 +1,6 @@
 # fuegos-proxy (Cloudflare Worker)
 
-Small CORS proxy so the GitHub Pages SPA can read fogos.pt and NASA FIRMS.
+Small CORS proxy so the SPA on `fuegos.guaka.org` / GitHub Pages can read fogos.pt and NASA FIRMS.
 
 ## Endpoints
 
@@ -9,7 +9,7 @@ Small CORS proxy so the GitHub Pages SPA can read fogos.pt and NASA FIRMS.
 | `GET /fires` | `https://api-lb.fogos.pt/new/fires` |
 | `GET /firms` | NASA FIRMS VIIRS Europe CSVs → Spain GeoJSON |
 
-CORS for `https://guaka.github.io` (+ local static servers).
+CORS for `https://fuegos.guaka.org`, `https://guaka.github.io`, and local static servers.
 
 ## One-time setup
 

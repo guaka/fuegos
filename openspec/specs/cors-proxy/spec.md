@@ -2,8 +2,8 @@
 
 ## Purpose
 
-Define the Cloudflare Worker that unlocks fogos.pt and NASA FIRMS for the GitHub Pages
-origin without becoming an open proxy.
+Define the Cloudflare Worker that unlocks fogos.pt and NASA FIRMS for the SPA
+origins without becoming an open proxy.
 
 ## Requirements
 
@@ -20,9 +20,15 @@ The Worker MUST only proxy known paths: `GET /fires` → fogos.pt fires JSON and
 
 ### Requirement: CORS for the SPA origin
 
-Browser calls from `https://guaka.github.io` (and local static origins listed in
-`ALLOWED_ORIGINS`) MUST receive `Access-Control-Allow-Origin` for that origin.
-OPTIONS preflight MUST succeed for GET.
+Browser calls from `https://fuegos.guaka.org`, `https://guaka.github.io`, and local
+static origins listed in `ALLOWED_ORIGINS` MUST receive
+`Access-Control-Allow-Origin` for that origin. OPTIONS preflight MUST succeed for GET.
+
+#### Scenario: custom domain Origin
+
+- **GIVEN** `Origin: https://fuegos.guaka.org`
+- **WHEN** `GET /fires` or `GET /firms` succeeds
+- **THEN** CORS headers MUST allow that origin
 
 #### Scenario: github.io Origin
 

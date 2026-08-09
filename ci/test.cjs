@@ -104,22 +104,24 @@ async function main() {
   });
 
   test("about page describes coverage without map", () => {
-    const html = read("about.html");
+    const html = read("index.html");
     for (const needle of [
-      "Regiones cubiertas",
+      'id="about"',
+      "De dónde salen los datos",
       "Castilla y León",
-      "Galicia",
       "toda España",
       "FIRMS",
       "incendios.gal",
       "fogos.pt",
       "software experimental de aficionado",
+      'href="#about"',
     ]) {
       assert.ok(html.includes(needle), `missing ${needle}`);
     }
     assert.ok(!html.includes("coverage-map"));
     assert.ok(!html.includes("about.js"));
-    assert.ok(!html.includes("maplibre-gl"));
+    const redirect = read("about.html");
+    assert.ok(redirect.includes("#about"), "about.html redirects to #about");
   });
 
   test("HTML has core UI hooks", () => {
@@ -139,7 +141,7 @@ async function main() {
       "./index.js",
       "maplibre-gl",
       "AGPL",
-      "about.html",
+      "#about",
       "favicon.svg",
       "software experimental de aficionado",
       "112",

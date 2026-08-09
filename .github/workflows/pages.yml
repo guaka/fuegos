@@ -32,9 +32,9 @@ jobs:
           touch _site/.nojekyll
           BUILD_TIME="$(date -u '+%Y-%m-%d %H:%M')"
           BUILD_ISO="$(date -u '+%Y-%m-%dT%H:%M:00Z')"
-          sed -i "s|__BUILD_ISO__|${BUILD_ISO}|g; s|__BUILD_TIME__|${BUILD_TIME}|g" _site/about.html
-          grep -q "${BUILD_TIME}" _site/about.html
-          grep -q "${BUILD_ISO}" _site/about.html
+          sed -i "s|__BUILD_ISO__|${BUILD_ISO}|g; s|__BUILD_TIME__|${BUILD_TIME}|g" _site/index.html
+          grep -q "${BUILD_TIME}" _site/index.html
+          grep -q "${BUILD_ISO}" _site/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

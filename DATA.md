@@ -104,4 +104,4 @@ Hasta que exista otra fuente abierta usable en el navegador, el resto de España
 
 ## Actualizar este documento
 
-Si se añade una CCAA u otra fuente PT, actualizar la tabla del resumen y la sección correspondiente, y mencionar el cambio en [`README.md`](./README.md) y [`about.html`](./about.html).
+Si se añade una CCAA u otra fuente PT, actualizar la tabla del resumen y la sección correspondiente, y mencionar el cambio en [`README.md`](./README.md) y la vista Sobre (`#about` en [`index.html`](./index.html)).

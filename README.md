@@ -17,8 +17,7 @@ La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas.
 
 ## Páginas
 
-- [`index.html`](./index.html) — mapa en vivo
-- [`about.html`](./about.html) — cobertura geográfica y fuentes
+- [`index.html`](./index.html) — mapa en vivo + Sobre (`#about`)
 - [`DATA.md`](./DATA.md) — fuentes de datos (tablas)
 
 ```bash

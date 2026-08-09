@@ -60,6 +60,8 @@
     btnLocate: document.getElementById("btn-locate"),
     btnRecenter: document.getElementById("btn-recenter"),
     btnLayers: document.getElementById("btn-layers"),
+    linkAbout: document.getElementById("link-about"),
+    aboutView: document.getElementById("about"),
     layersPanel: document.getElementById("layers-panel"),
     layerOficiales: document.getElementById("layer-oficiales"),
     layerGalicia: document.getElementById("layer-galicia"),
@@ -863,7 +865,8 @@
 
     if (id) {
       history.replaceState(null, "", `#${encodeURIComponent(id)}`);
-    } else if (location.hash) {
+      setAboutOpen(false, { skipHash: true });
+    } else if (location.hash && currentHash() !== "about") {
       history.replaceState(null, "", location.pathname + location.search);
     }
   }
@@ -1480,8 +1483,9 @@
         setHeaderStatus(`${els.ticker.textContent} · falló ${notes.join("/")}`);
       }
 
-      const hashId = decodeURIComponent((location.hash || "").replace(/^#/, ""));
-      if (hashId && fires.some((f) => f.id === hashId)) selectFire(hashId, true);
+      const hashId = currentHash();
+      if (hashId === "about") setAboutOpen(true, { skipHash: true });
+      else if (hashId && fires.some((f) => f.id === hashId)) selectFire(hashId, true);
 
       if (
         !fires.length &&
@@ -1600,6 +1604,51 @@
     );
   }
 
+  function currentHash() {
+    return decodeURIComponent((location.hash || "").replace(/^#/, ""));
+  }
+
+  function setAboutOpen(open, opts) {
+    const skipHash = opts && opts.skipHash;
+    document.documentElement.classList.toggle("is-about", !!open);
+    if (els.linkAbout) {
+      els.linkAbout.classList.toggle("is-active", !!open);
+      if (open) els.linkAbout.setAttribute("aria-current", "page");
+      else els.linkAbout.removeAttribute("aria-current");
+    }
+    if (open && els.layersPanel) {
+      els.layersPanel.classList.add("collapsed");
+      els.layersPanel.hidden = true;
+      if (els.btnLayers) {
+        els.btnLayers.setAttribute("aria-expanded", "false");
+        els.btnLayers.classList.remove("is-active");
+      }
+    }
+    document.title = open ? "Sobre — fuegos.guaka.org" : "fuegos.guaka.org";
+    if (!skipHash) {
+      if (open && currentHash() !== "about") {
+        history.pushState(null, "", "#about");
+      } else if (!open && currentHash() === "about") {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
+    }
+    if (!open) notifyMapResize();
+  }
+
+  function syncRouteFromHash() {
+    const h = currentHash();
+    if (h === "about") {
+      setAboutOpen(true, { skipHash: true });
+      return;
+    }
+    if (document.documentElement.classList.contains("is-about")) {
+      setAboutOpen(false, { skipHash: true });
+    }
+    if (h && fires.some((f) => f.id === h)) {
+      selectFire(h, true);
+    }
+  }
+
   function wireUi() {
     if (els.btnRecenter) {
       els.btnRecenter.addEventListener("click", () => {
@@ -1638,6 +1687,10 @@
     }
 
     els.btnLayers.addEventListener("click", () => {
+      if (document.documentElement.classList.contains("is-about")) {
+        setAboutOpen(false);
+        return;
+      }
       els.layersPanel.classList.toggle("collapsed");
       syncLayersToggle();
     });
@@ -1652,6 +1705,28 @@
     });
 
     syncLayersToggle();
+
+    window.addEventListener("hashchange", syncRouteFromHash);
+    if (currentHash() === "about") setAboutOpen(true, { skipHash: true });
+
+    if (els.linkAbout) {
+      els.linkAbout.addEventListener("click", (e) => {
+        if (currentHash() === "about") {
+          e.preventDefault();
+          setAboutOpen(true, { skipHash: true });
+        }
+      });
+    }
+
+    const brand = document.querySelector(".brand");
+    if (brand) {
+      brand.addEventListener("click", (e) => {
+        if (document.documentElement.classList.contains("is-about")) {
+          e.preventDefault();
+          setAboutOpen(false);
+        }
+      });
+    }
 
     els.search.addEventListener("input", () => {
       query = els.search.value || "";

@@ -9,7 +9,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="description" content="Fuegos Vivos — mapa de incendios en toda España (CyL, Galicia y satélite)." />
-  <title>Fuegos Vivos</title>
+  <title>fuegos.guaka.org</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -35,6 +35,8 @@
       --status-estabilizado: #65c4ed;
       --status-conclusao: #bdbdbd;
       --status-otro: #bdbdbd;
+      --es: #c60b1e;
+      --pt: #006600;
     }
 
     * { box-sizing: border-box; }
@@ -906,6 +908,179 @@
         --sheet-detail: min(55vh, 400px);
       }
     }
+
+    /* —— Sobre (#about) —— */
+    .about-view {
+      display: none;
+      position: fixed;
+      inset: var(--nav-h) 0 0 0;
+      z-index: 25;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      background: var(--bg);
+      color: var(--ink);
+      padding: 1.5rem 1.25rem 3rem;
+    }
+    html.is-about {
+      overflow: auto;
+    }
+    html.is-about body {
+      overflow: auto;
+    }
+    html.is-about .about-view {
+      display: block;
+    }
+    html.is-about .layout {
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .about-view-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 1.25rem;
+    }
+    .about-hero {
+      background: var(--card);
+      border-radius: 0.75rem;
+      padding: 1.5rem 1.4rem 1.35rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+    .about-hero h1 {
+      margin: 0 0 0.5rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--orange-deep);
+    }
+    .about-hero p {
+      margin: 0;
+      max-width: 58ch;
+      color: var(--ink-muted);
+      font-size: 1.05rem;
+    }
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      max-width: 40rem;
+    }
+    .about-panel {
+      background: var(--card);
+      border-radius: 0.75rem;
+      padding: 1.25rem 1.2rem 1.3rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+    .about-panel h2,
+    .about-sources h2 {
+      margin: 0 0 0.75rem;
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--orange);
+    }
+    .about-panel p,
+    .about-panel li,
+    .about-sources p {
+      color: var(--ink-muted);
+      font-size: 0.95rem;
+    }
+    .about-panel p { margin: 0 0 0.85rem; }
+    .about-panel ul {
+      margin: 0;
+      padding-left: 1.15rem;
+      display: grid;
+      gap: 0.55rem;
+    }
+    .about-panel li strong { color: var(--ink); }
+    .about-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border-radius: 3px;
+      padding: 0.12rem 0.35rem;
+      vertical-align: middle;
+      margin-right: 0.25rem;
+    }
+    .about-badge.es { background: var(--es); color: #fff; }
+    .about-badge.pt { background: var(--pt); color: #fff; }
+    .about-badge.sat { background: #444; color: #fff; }
+    .about-sources {
+      background: var(--card);
+      border-radius: 0.75rem;
+      padding: 1.15rem 1.2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+    .about-sources p {
+      margin: 0 0 0.55rem;
+      font-size: 0.9rem;
+    }
+    .about-sources p:last-child { margin-bottom: 0; }
+    .about-hobby-warn {
+      margin: 1rem 0 0;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      color: var(--ink-muted);
+      padding: 0.65rem 0.85rem;
+      border-left: 3px solid var(--orange);
+      background: rgba(255, 110, 2, 0.08);
+    }
+    .about-foot {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.25rem 0 0.5rem;
+      flex-wrap: wrap;
+    }
+    .about-foot-license {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .about-foot-license:hover {
+      color: var(--ink);
+      text-decoration: underline;
+    }
+    .about-foot-build {
+      font-size: 0.75rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+    }
+    .about-foot-build[datetime="__BUILD_ISO__"] {
+      display: none;
+    }
+    .about-gh {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      color: var(--muted);
+      transition: color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+    .about-gh:hover {
+      color: var(--ink);
+      background: rgba(0, 0, 0, 0.05);
+      transform: translateY(-1px);
+    }
+    .about-gh svg {
+      width: 1.35rem;
+      height: 1.35rem;
+      fill: currentColor;
+    }
+    @media (max-width: 860px) {
+      .about-view { padding: 1.15rem 1rem 2.5rem; }
+    }
   </style>
 </head>
 <body>
@@ -918,7 +1093,7 @@
       <button type="button" class="top-btn" id="btn-layers" aria-expanded="false" aria-controls="layers-panel">
         Mapa
       </button>
-      <a class="top-btn" href="./about.html">Sobre</a>
+      <a class="top-btn" id="link-about" href="#about">Sobre</a>
     </div>
   </header>
 
@@ -943,7 +1118,7 @@
         Resto de España: detecciones satélite FIRMS (y EFFIS opcional).
         Portugal: despachos <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a>.
         En iPhone con Modo de aislamiento el mapa usa teselas (sin WebGL).
-        <a href="./about.html">Sobre la cobertura</a> ·
+        <a href="#about">Sobre la cobertura</a> ·
         <a href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a> ·
         <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>
       </p>
@@ -984,6 +1159,101 @@
       </div>
     </div>
   </div>
+
+  <section id="about" class="about-view" aria-label="Sobre">
+    <div class="about-view-inner">
+      <div class="about-hero">
+        <h1>Sobre Fuegos Vivos</h1>
+        <p>
+          Mapa público de incendios en <strong>toda España</strong>
+          (península, Baleares y Canarias) y Portugal.
+          Inspirado en <a href="https://fogos.pt" rel="noopener">fogos.pt</a>.
+        </p>
+      </div>
+
+      <div class="about-grid">
+        <section class="about-panel" aria-labelledby="coverage-title">
+          <h2 id="coverage-title">De dónde salen los datos</h2>
+          <p>
+            La cobertura geográfica es nacional: satélite en toda España,
+            más partes y avisos donde hay feeds abiertos.
+          </p>
+          <ul>
+            <li>
+              <span class="about-badge sat">SAT</span>
+              <strong>NASA FIRMS (VIIRS)</strong> —
+              detecciones de calor de las últimas 24h en España.
+              No son partes de extinción; EFFIS queda como capa opcional de teselas.
+            </li>
+            <li>
+              <span class="about-badge es">ES</span>
+              <strong>Junta de Castilla y León</strong> —
+              partes oficiales en curso (datos abiertos JCyL).
+            </li>
+            <li>
+              <span class="about-badge es">ES</span>
+              <strong>incendios.gal</strong> —
+              avisos colaborativos en Galicia (no oficiales).
+            </li>
+            <li>
+              <span class="about-badge pt">PT</span>
+              <strong>fogos.pt</strong> —
+              despachos ANEPC en Portugal (vía proxy CORS).
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <section class="about-sources">
+        <h2>Fuentes y licencia</h2>
+        <p>
+          Datos oficiales CyL:
+          <a href="https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/" rel="noopener">incendios-forestales</a>.
+          Galicia (cidadán):
+          <a href="https://incendios.gal/" rel="noopener">incendios.gal</a>.
+          Satélite:
+          <a href="https://forest-fire.emergency.copernicus.eu/" rel="noopener">EFFIS / Copernicus EMS</a>
+          y NASA FIRMS.
+          Portugal:
+          <a href="https://fogos.pt" rel="noopener">fogos.pt</a>.
+          EGIF/MITECO es histórico consolidado, no un feed diario usable aquí.
+          Inventario detallado:
+          <a href="https://github.com/guaka/fuegos/blob/main/DATA.md" rel="noopener">DATA.md</a>.
+        </p>
+        <p>
+          Las detecciones satélite no son despachos de extinción. El código es
+          <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>.
+        </p>
+        <p class="about-hobby-warn">
+          <strong>Aviso:</strong> software experimental de aficionado. No es un servicio oficial
+          de emergencias; no sustituye a 112 / Protección Civil. Los datos pueden estar
+          incompletos o desactualizados.
+        </p>
+      </section>
+
+      <div class="about-foot">
+        <a
+          class="about-gh"
+          href="https://github.com/guaka/fuegos"
+          rel="noopener"
+          target="_blank"
+          aria-label="GitHub — guaka/fuegos"
+          title="GitHub"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.52 2.87 8.35 6.84 9.71.5.1.68-.22.68-.49 0-.24-.01-.87-.01-1.71-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.73 0 0 .84-.27 2.75 1.05A9.3 9.3 0 0 1 12 7.5c.85 0 1.71.12 2.51.35 1.9-1.32 2.74-1.05 2.74-1.05.55 1.42.2 2.47.1 2.73.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.6.69.49A10.03 10.03 0 0 0 22 12.26C22 6.58 17.52 2 12 2z"/>
+          </svg>
+        </a>
+        <a
+          class="about-foot-license"
+          href="https://www.gnu.org/licenses/agpl-3.0.html"
+          rel="noopener"
+          target="_blank"
+        >software livre AGPL</a>
+        <time class="about-foot-build" id="build-time" datetime="__BUILD_ISO__">__BUILD_TIME__</time>
+      </div>
+    </div>
+  </section>
 
   <!-- Inline icons used for resource counts -->
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none">

@@ -1,5 +1,5 @@
 /**
- * CORS proxy for Fuegos Vivos (github.io).
+ * CORS proxy for Fuegos Vivos (fuegos.guaka.org / github.io).
  * Locked upstreams — not an open proxy.
  *
  * GET  /fires  → fogos.pt fires JSON
@@ -16,6 +16,8 @@ const FIRMS_CSVS = [
 
 /** Origins allowed to call this Worker from the browser. */
 const ALLOWED_ORIGINS = new Set([
+  "https://fuegos.guaka.org",
+  "https://www.fuegos.guaka.org",
   "https://guaka.github.io",
   "http://127.0.0.1:8080",
   "http://localhost:8080",
@@ -25,7 +27,7 @@ const ALLOWED_ORIGINS = new Set([
 
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
-  const allow = ALLOWED_ORIGINS.has(origin) ? origin : "https://guaka.github.io";
+  const allow = ALLOWED_ORIGINS.has(origin) ? origin : "https://fuegos.guaka.org";
   return {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET,OPTIONS",
@@ -150,7 +152,7 @@ async function proxyFogos(request, url) {
   const upstream = await fetch(FOGOS_UPSTREAM, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "FuegosVivos/0.1 (+https://guaka.github.io/fuegos/; proxy)",
+      "User-Agent": "FuegosVivos/0.1 (+https://fuegos.guaka.org/; proxy)",
     },
   });
 
@@ -183,7 +185,7 @@ async function proxyFirms(request, url) {
   const texts = await Promise.all(
     FIRMS_CSVS.map(async (csvUrl) => {
       const r = await fetch(csvUrl, {
-        headers: { "User-Agent": "FuegosVivos/0.1 (+https://guaka.github.io/fuegos/; firms)" },
+        headers: { "User-Agent": "FuegosVivos/0.1 (+https://fuegos.guaka.org/; firms)" },
       });
       if (!r.ok) throw new Error(`FIRMS HTTP ${r.status} for ${csvUrl}`);
       return r.text();

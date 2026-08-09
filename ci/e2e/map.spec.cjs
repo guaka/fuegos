@@ -144,7 +144,7 @@ test.describe("Fuegos Vivos map e2e", () => {
     await page.goto("/");
     const actions = page.locator(".top-actions");
     await expect(actions.locator("#btn-layers")).toHaveText(/Mapa/i);
-    await expect(actions.locator('a.top-btn[href="./about.html"]')).toHaveText(/Sobre/i);
+    await expect(actions.locator('a.top-btn[href="#about"]')).toHaveText(/Sobre/i);
     await expect(page.locator(".layers-head")).toHaveCount(0);
   });
 

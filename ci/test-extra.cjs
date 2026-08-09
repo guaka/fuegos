@@ -124,14 +124,15 @@ async function runExtraTests(test, testAsync) {
     assert.ok(src.includes('pathname === "/fires"'));
     assert.ok(src.includes("firmsToGeoJSON"));
     assert.ok(src.includes("FOGOS_UPSTREAM") || src.includes("api-lb.fogos.pt"));
+    assert.ok(src.includes("https://fuegos.guaka.org"), "custom domain in ALLOWED_ORIGINS");
   });
 
   await testAsync("live Worker /fires returns fogos-shaped JSON with CORS", async () => {
     const res = await fetch("https://fuegos-proxy.crew.workers.dev/fires", {
-      headers: { Origin: "https://guaka.github.io", Accept: "application/json" },
+      headers: { Origin: "https://fuegos.guaka.org", Accept: "application/json" },
     });
     assert.ok(res.ok, `HTTP ${res.status}`);
-    assert.strictEqual(res.headers.get("access-control-allow-origin"), "https://guaka.github.io");
+    assert.strictEqual(res.headers.get("access-control-allow-origin"), "https://fuegos.guaka.org");
     const body = await res.json();
     assert.ok(body && Array.isArray(body.data), "expected { data: [] }");
     const filtered = FF.filterFogosRows(body);
@@ -141,10 +142,10 @@ async function runExtraTests(test, testAsync) {
 
   await testAsync("live Worker /firms returns Spain GeoJSON with CORS", async () => {
     const res = await fetch("https://fuegos-proxy.crew.workers.dev/firms", {
-      headers: { Origin: "https://guaka.github.io", Accept: "application/geo+json, application/json" },
+      headers: { Origin: "https://fuegos.guaka.org", Accept: "application/geo+json, application/json" },
     });
     assert.ok(res.ok, `HTTP ${res.status}`);
-    assert.strictEqual(res.headers.get("access-control-allow-origin"), "https://guaka.github.io");
+    assert.strictEqual(res.headers.get("access-control-allow-origin"), "https://fuegos.guaka.org");
     const body = await res.json();
     assert.strictEqual(body.type, "FeatureCollection");
     assert.ok(Array.isArray(body.features));
