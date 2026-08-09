@@ -125,7 +125,7 @@ async function main() {
   test("HTML has core UI hooks", () => {
     const html = read("index.html");
     for (const needle of [
-      "Fuegos",
+      "fuegos.guaka.org",
       'id="map"',
       'id="fire-list"',
       'id="sidebar"',

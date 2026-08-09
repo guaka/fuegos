@@ -82,20 +82,21 @@
     .brand-mark {
       font-family: var(--font-display);
       font-weight: 700;
-      font-size: 1.05rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      text-transform: none;
     }
-    .brand-mark span { opacity: 0.92; font-weight: 500; }
     .ticker {
       flex: 1;
       min-width: 0;
-      font-size: 0.75rem;
+      margin: 0;
+      font-size: 0.7rem;
       font-weight: 500;
+      letter-spacing: 0.01em;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      opacity: 0.95;
+      opacity: 0.82;
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     }
     .top-actions {
@@ -220,16 +221,8 @@
     }
     .sidebar.is-detail .legend,
     .sidebar.is-detail .legend-hint,
-    .sidebar.is-detail .sidebar-tools,
-    .sidebar.is-detail #status-line {
+    .sidebar.is-detail .sidebar-tools {
       display: none;
-    }
-    .detail-meta {
-      margin: 0.15rem 0 0;
-      font-size: 0.72rem;
-      color: var(--muted);
-      line-height: 1.4;
-      padding: 0.35rem 0.15rem 0.15rem;
     }
 
     .panel-title {
@@ -850,20 +843,6 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .sheet-hint {
-        font-size: 0.68rem;
-        font-weight: 600;
-        color: var(--orange);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-      .sidebar.is-sheet-open .sheet-hint::after {
-        content: " · tocar para reducir";
-      }
-      .sidebar:not(.is-sheet-open) .sheet-hint::after {
-        content: " · tocar para lista";
-      }
-
       /* Peek: only the handle — map stays dominant (fogos.pt-like) */
       .sidebar:not(.is-sheet-open) > :not(.sheet-handle) {
         display: none !important;
@@ -871,8 +850,7 @@
 
       .sidebar.is-detail .legend,
       .sidebar.is-detail .legend-hint,
-      .sidebar.is-detail .sidebar-tools,
-      .sidebar.is-detail #status-line {
+      .sidebar.is-detail .sidebar-tools {
         display: none;
       }
 
@@ -903,7 +881,10 @@
         overflow: auto;
       }
       .layers.collapsed { display: none; }
-      .ticker { display: none; }
+      .ticker {
+        font-size: 0.62rem;
+        opacity: 0.78;
+      }
       .card-title { font-size: 1.05rem; }
       .asset strong { font-size: 1.15rem; }
       .region-card { padding: 0.7rem 0.85rem; }
@@ -911,7 +892,7 @@
         --nav-h: 42px;
         padding: 0 0.55rem;
       }
-      .brand-mark { font-size: 0.95rem; }
+      .brand-mark { font-size: 0.85rem; }
       .top-btn {
         padding: 0.24rem 0.62rem;
         font-size: 0.72rem;
@@ -929,10 +910,10 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="Fuegos Vivos">
-      <span class="brand-mark">Fuegos <span>Vivos</span></span>
+    <a class="brand" href="./" aria-label="fuegos.guaka.org">
+      <span class="brand-mark">fuegos.guaka.org</span>
     </a>
-    <p class="ticker" id="ticker">Cargando incendios…</p>
+    <p class="ticker" id="ticker">Cargando…</p>
     <div class="top-actions">
       <button type="button" class="top-btn" id="btn-layers" aria-expanded="false" aria-controls="layers-panel">
         Mapa
@@ -946,12 +927,10 @@
       <button type="button" class="sheet-handle" id="btn-sheet" aria-expanded="false" aria-controls="fire-list">
         <span class="sheet-grip" aria-hidden="true"></span>
         <span class="sheet-label" id="sheet-label">Lista de incendios</span>
-        <span class="sheet-hint" aria-hidden="true"></span>
       </button>
       <div class="sidebar-tools">
         <input class="search" id="search" type="search" placeholder="Buscar municipio o provincia…" autocomplete="off" />
       </div>
-      <p class="meta-line" id="status-line">Actualizando partes oficiales…</p>
       <div class="legend" aria-hidden="true">
         <span><i class="dot activo"></i> Activo</span>
         <span><i class="dot controlado"></i> Controlado</span>

@@ -52,7 +52,6 @@
   const els = {
     sidebar: document.getElementById("sidebar"),
     list: document.getElementById("fire-list"),
-    status: document.getElementById("status-line"),
     ticker: document.getElementById("ticker"),
     search: document.getElementById("search"),
     btnToggleList: document.getElementById("btn-toggle-list"),
@@ -275,22 +274,73 @@
     return map ? map.getZoom() : FOCUS.zoom;
   }
 
-  function mapFlyToLngLat(lng, lat, zoom) {
+  function mapChromePadding(extra) {
+    const topbar = document.querySelector(".topbar");
+    const top = (topbar ? topbar.offsetHeight : 48) + 12;
+    let bottom = 48;
+    if (isMobileLayout() && els.sidebar) {
+      // Keep focused dots in the map band above the bottom sheet.
+      bottom = Math.max(els.sidebar.offsetHeight || 0, 72) + 36;
+    }
+    const side = isMobileLayout() ? 20 : 40;
+    const bump = extra == null ? 0 : extra;
+    return {
+      top: top + bump,
+      right: side + bump,
+      bottom: bottom + bump,
+      left: side + bump,
+    };
+  }
+
+  function mapFlyToLngLat(lng, lat, zoom, opts) {
     if (!map) return;
     const z = zoom == null ? mapGetZoom() : zoom;
+    const pad = mapChromePadding();
+    const durationMs = opts && opts.durationMs != null ? opts.durationMs : 650;
     if (mapKind === "gl") {
-      map.flyTo({ center: [lng, lat], zoom: z, bearing: 0, pitch: 0, essential: true });
-    } else {
-      map.flyTo([lat, lng], z, { duration: 0.6 });
+      map.flyTo({
+        center: [lng, lat],
+        zoom: z,
+        padding: pad,
+        bearing: 0,
+        pitch: 0,
+        essential: true,
+        duration: durationMs,
+      });
+      return;
     }
+    // Leaflet: place the point in the center of the unpadded (visible) area.
+    const target = L.latLng(lat, lng);
+    const size = map.getSize();
+    const point = map.project(target, z);
+    const cx = (pad.left + (size.x - pad.right)) / 2;
+    const cy = (pad.top + (size.y - pad.bottom)) / 2;
+    const offset = L.point(cx - size.x / 2, cy - size.y / 2);
+    const center = map.unproject(point.subtract(offset), z);
+    map.flyTo(center, z, { duration: durationMs / 1000 });
+  }
+
+  function keepSelectedFireInView(opts) {
+    if (!map || !selectedId) return;
+    const fire = fires.find((f) => f.id === selectedId);
+    if (!fire || fire.lat == null || fire.lng == null) return;
+    const delay = opts && opts.delay != null ? opts.delay : 0;
+    const run = () =>
+      mapFlyToLngLat(fire.lng, fire.lat, Math.max(mapGetZoom(), 10), {
+        durationMs: opts && opts.durationMs != null ? opts.durationMs : 420,
+      });
+    if (delay > 0) window.setTimeout(run, delay);
+    else requestAnimationFrame(run);
   }
 
   function mapEaseHome() {
     if (!map) return;
+    const pad = mapChromePadding();
     if (mapKind === "gl") {
       map.easeTo({
         center: FOCUS.center,
         zoom: FOCUS.zoom,
+        padding: pad,
         bearing: 0,
         pitch: 0,
         essential: true,
@@ -303,7 +353,8 @@
   /** @param {[number, number, number, number]} bbox west,south,east,north */
   function mapFitBbox(bbox, padding, maxZoom) {
     if (!map || !bbox) return;
-    const pad = padding == null ? 56 : padding;
+    const bump = padding == null ? 0 : Math.max(0, padding - 40);
+    const pad = mapChromePadding(bump);
     const mz = maxZoom == null ? 9.5 : maxZoom;
     if (mapKind === "gl") {
       map.fitBounds(
@@ -319,14 +370,19 @@
           [bbox[1], bbox[0]],
           [bbox[3], bbox[2]],
         ],
-        { padding: [pad, pad], maxZoom: mz }
+        {
+          paddingTopLeft: [pad.left, pad.top],
+          paddingBottomRight: [pad.right, pad.bottom],
+          maxZoom: mz,
+        }
       );
     }
   }
 
   function mapFitLngLats(points, padding, maxZoom) {
     if (!map || !points.length) return;
-    const pad = padding == null ? 56 : padding;
+    const bump = padding == null ? 0 : Math.max(0, padding - 40);
+    const pad = mapChromePadding(bump);
     const mz = maxZoom == null ? 9.5 : maxZoom;
     if (points.length === 1) {
       mapFlyToLngLat(points[0].lng, points[0].lat, Math.max(mapGetZoom(), 9));
@@ -338,7 +394,11 @@
       map.fitBounds(bounds, { padding: pad, maxZoom: mz, essential: true });
     } else {
       const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]));
-      map.fitBounds(bounds, { padding: [pad, pad], maxZoom: mz });
+      map.fitBounds(bounds, {
+        paddingTopLeft: [pad.left, pad.top],
+        paddingBottomRight: [pad.right, pad.bottom],
+        maxZoom: mz,
+      });
     }
   }
 
@@ -536,10 +596,7 @@
       els.layerRelief.checked = false;
     }
 
-    if (els.status) {
-      els.status.textContent =
-        "Mapa compatible (sin WebGL — p. ej. Modo de aislamiento). Capas raster activas.";
-    }
+    setHeaderStatus("Mapa · sin WebGL");
 
     requestAnimationFrame(() => {
       try {
@@ -796,8 +853,12 @@
     renderSidebar();
 
     if (fire && fly && fire.lat != null && fire.lng != null) {
-      mapFlyToLngLat(fire.lng, fire.lat, Math.max(mapGetZoom(), 10));
+      // Open sheet first so padding accounts for its height, then frame the dot.
       showSidebar(true);
+      // Mobile: setSheetOpen (via showSidebar) reframes after the sheet transition.
+      if (!isMobileLayout()) {
+        keepSelectedFireInView({ delay: 0, durationMs: 650 });
+      }
     }
 
     if (id) {
@@ -889,9 +950,7 @@
   function flyToBbox(bbox, label) {
     if (!map || !bbox) return;
     mapFitBbox(bbox, 56, 9.5);
-    if (label && els.status) {
-      els.status.textContent = `${label}: acercando en el mapa.`;
-    }
+    if (label) setHeaderStatus(`${label} · mapa`);
   }
 
   function renderMarkers() {
@@ -1103,14 +1162,6 @@
       if (body) body.appendChild(buildResourcesChart(fire.history || []));
     }
     appendListItem(card);
-
-    const meta = document.createElement("p");
-    meta.className = "detail-meta";
-    meta.textContent =
-      (els.status && els.status.textContent && !els.status.querySelector(".error")
-        ? els.status.textContent
-        : "") || "Datos del mapa actualizados en segundo plano.";
-    appendListItem(meta);
   }
 
   function renderSearchHits(list) {
@@ -1352,29 +1403,35 @@
     renderRegionOverview(list);
   }
 
+  function formatClock(date) {
+    try {
+      return new Intl.DateTimeFormat("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date);
+    } catch {
+      return date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    }
+  }
+
+  function setHeaderStatus(text) {
+    if (els.ticker) els.ticker.textContent = text;
+  }
+
   function updateTicker() {
     const visible = filteredFires();
     const cyl = visible.filter((f) => f.source === "JCyL").length;
     const ga = visible.filter((f) => f.source === "incendios.gal").length;
     const pt = visible.filter((f) => f.source === "fogos.pt").length;
-    const hot = visible.filter((f) => f.statusClass === "activo").length;
-    const now = new Date();
-    const hhmm = now.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
     const firmsOn = !(els.layerFirms && !els.layerFirms.checked);
-    els.ticker.textContent =
-      `${hhmm} — ${cyl} CyL` +
-      `${ga ? ` · ${ga} Galicia` : ""}` +
-      `${pt ? ` · ${pt} PT` : ""}` +
-      `${hot ? ` · ${hot} activos` : ""}` +
-      `${firmsOn && firmsCount ? ` · ${firmsCount} satélite ES` : ""}`;
-    if (els.sheetLabel) {
-      const bits = [];
-      if (cyl) bits.push(`${cyl} CyL`);
-      if (ga) bits.push(`${ga} Galicia`);
-      if (pt) bits.push(`${pt} PT`);
-      if (firmsOn && firmsCount) bits.push(`${firmsCount} satélite`);
-      els.sheetLabel.textContent = bits.length ? bits.join(" · ") : "Lista de incendios";
-    }
+    const bits = [];
+    if (firmsOn && firmsCount) bits.push(`${firmsCount} sat`);
+    if (cyl) bits.push(`${cyl} CyL`);
+    if (ga) bits.push(`${ga} Gal`);
+    if (pt) bits.push(`${pt} PT`);
+    const clock = formatClock(new Date());
+    const line = bits.length ? `${bits.join(" · ")} · ${clock}` : `Actualizando… · ${clock}`;
+    setHeaderStatus(line);
   }
 
   function escapeHtml(value) {
@@ -1385,19 +1442,8 @@
       .replace(/"/g, "&quot;");
   }
 
-  function formatUpdated(date) {
-    try {
-      return new Intl.DateTimeFormat("es-ES", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(date);
-    } catch {
-      return date.toLocaleString("es-ES");
-    }
-  }
-
   async function refresh() {
-    els.status.textContent = "Actualizando CyL, Galicia, Portugal y satélite…";
+    setHeaderStatus("Actualizando…");
     try {
       const [esResult, gaResult, ptResult, firmsResult] = await Promise.allSettled([
         fetchJcylFires(),
@@ -1421,19 +1467,18 @@
 
       fires = [...esFires, ...gaFires, ...ptFires].sort(compareFires);
       const notes = [];
-      if (esResult.status === "rejected") notes.push("CyL falló");
-      if (gaResult.status === "rejected") notes.push("Galicia falló");
-      if (ptResult.status === "rejected") notes.push("Portugal falló");
-      if (firmsResult.status === "rejected") notes.push("FIRMS falló");
-      els.status.textContent =
-        `Mapa: ${firmsCount} satélite ES · CyL ${esFires.length} · Galicia ${gaFires.length} · PT ${ptFires.length}. ` +
-        `Actualizado ${formatUpdated(new Date())}` +
-        (notes.length ? ` · ${notes.join(", ")}` : "");
+      if (esResult.status === "rejected") notes.push("CyL");
+      if (gaResult.status === "rejected") notes.push("Gal");
+      if (ptResult.status === "rejected") notes.push("PT");
+      if (firmsResult.status === "rejected") notes.push("sat");
 
       if (selectedId && !fires.some((f) => f.id === selectedId)) selectedId = null;
       renderSidebar();
       renderMarkers();
       updateTicker();
+      if (notes.length) {
+        setHeaderStatus(`${els.ticker.textContent} · falló ${notes.join("/")}`);
+      }
 
       const hashId = decodeURIComponent((location.hash || "").replace(/^#/, ""));
       if (hashId && fires.some((f) => f.id === hashId)) selectFire(hashId, true);
@@ -1446,14 +1491,14 @@
         firmsResult.status === "rejected"
       ) {
         els.list.innerHTML = '<li class="error">No se pudieron cargar los datos.</li>';
+        setHeaderStatus("Error al actualizar");
       }
     } catch (err) {
       console.error(err);
       fires = [];
       selectedId = null;
       els.sidebar.classList.remove("is-detail");
-      els.status.innerHTML = '<span class="error">Error al actualizar.</span>';
-      els.ticker.textContent = "Error al actualizar datos";
+      setHeaderStatus("Error al actualizar");
       els.list.innerHTML = '<li class="error">No se pudieron cargar los datos.</li>';
       clearMarkers();
     }
@@ -1484,6 +1529,9 @@
     document.documentElement.classList.toggle("sheet-open", !!open);
     if (els.btnSheet) els.btnSheet.setAttribute("aria-expanded", open ? "true" : "false");
     notifyMapResize();
+    if (selectedId) {
+      keepSelectedFireInView({ delay: isMobileLayout() ? 300 : 0, durationMs: 380 });
+    }
   }
 
   function showSidebar(show) {
@@ -1513,14 +1561,14 @@
   function locateMe() {
     if (!map) return;
     if (!navigator.geolocation) {
-      els.status.textContent = "Tu navegador no permite geolocalización.";
+      setHeaderStatus("Sin geolocalización");
       return;
     }
     if (els.btnLocate) {
       els.btnLocate.disabled = true;
       els.btnLocate.setAttribute("aria-busy", "true");
     }
-    els.status.textContent = "Obteniendo tu ubicación…";
+    setHeaderStatus("Ubicando…");
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -1528,24 +1576,27 @@
         const lng = pos.coords.longitude;
         setUserLocation(lng, lat);
         mapFlyToLngLat(lng, lat, Math.max(mapGetZoom(), 10));
-        els.status.textContent = "Mapa centrado en tu ubicación.";
+        setHeaderStatus("Aquí");
+        updateTicker();
         if (els.btnLocate) {
           els.btnLocate.disabled = false;
           els.btnLocate.removeAttribute("aria-busy");
         }
       },
       (err) => {
-        let msg = "No se pudo obtener tu ubicación.";
-        if (err && err.code === 1) msg = "Permiso de ubicación denegado.";
-        else if (err && err.code === 2) msg = "Ubicación no disponible.";
-        else if (err && err.code === 3) msg = "Tiempo de espera al obtener la ubicación.";
-        els.status.textContent = msg;
+        let msg = "Sin ubicación";
+        if (err && err.code === 1) msg = "Ubicación denegada";
+        else if (err && err.code === 2) msg = "Ubicación no disponible";
+        else if (err && err.code === 3) msg = "Sin ubicación";
+        setHeaderStatus(msg);
         if (els.btnLocate) {
           els.btnLocate.disabled = false;
           els.btnLocate.removeAttribute("aria-busy");
         }
+        window.setTimeout(updateTicker, 2500);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+      // Coarse + short timeout: high-accuracy GPS can hang for a long time.
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 120000 }
     );
   }
 
@@ -1742,9 +1793,7 @@
         mapEl.innerHTML =
           "<p style='padding:1.5rem;font-family:sans-serif;max-width:28rem'>No se pudo iniciar el mapa. En iPhone con Modo de aislamiento, prueba recargar; si sigue fallando, excluye este sitio del modo o usa otro navegador.</p>";
       }
-      if (els.status) {
-        els.status.innerHTML = '<span class="error">Mapa no disponible en este navegador.</span>';
-      }
+      if (els.ticker) setHeaderStatus("Mapa no disponible");
     }
   }
 

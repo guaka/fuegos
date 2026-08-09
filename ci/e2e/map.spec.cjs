@@ -111,9 +111,8 @@ test.describe("Fuegos Vivos map e2e", () => {
     await page.goto("/");
     await expect(page.locator("#map")).toBeVisible();
     await expect(page.locator("#ticker")).not.toHaveText(/Cargando/i, { timeout: 30_000 });
-
-    await expect(page.locator("#status-line")).toContainText(/CyL/i, { timeout: 30_000 });
-    await expect(page.locator("#status-line")).toContainText(/PT/i);
+    await expect(page.locator("#ticker")).toContainText(/CyL/i, { timeout: 30_000 });
+    await expect(page.locator("#ticker")).toContainText(/PT/i);
 
     const markerCount = await page.locator(".map-marker").count();
     const FF = require("../../lib/fires.js");

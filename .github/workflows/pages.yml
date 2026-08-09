@@ -30,6 +30,11 @@ jobs:
           cp index.html index.js about.html favicon.svg LICENSE README.md _site/
           cp lib/fires.js _site/lib/
           touch _site/.nojekyll
+          BUILD_TIME="$(date -u '+%Y-%m-%d %H:%M')"
+          BUILD_ISO="$(date -u '+%Y-%m-%dT%H:%M:00Z')"
+          sed -i "s|__BUILD_ISO__|${BUILD_ISO}|g; s|__BUILD_TIME__|${BUILD_TIME}|g" _site/about.html
+          grep -q "${BUILD_TIME}" _site/about.html
+          grep -q "${BUILD_ISO}" _site/about.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
