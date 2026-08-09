@@ -7,7 +7,7 @@ Sitio estático de dos archivos (`index.html` + `index.js`). Sin build. Licencia
 ## Datos
 
 - **España — Castilla y León (León / Salamanca):** partes oficiales [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL), con conteo de medios a partir del texto.
-- **Portugal — distritos fronterizos:** incidentes de [fogos.pt](https://fogos.pt) (ANEPC). En GitHub Pages se sirven desde `data/pt-fires.json` (refresco en cada deploy / cada hora), porque la API pública no envía CORS usable desde el navegador.
+- **Portugal — distritos fronterizos:** intento en vivo contra la API de [fogos.pt](https://fogos.pt) (ANEPC). Si el navegador no recibe CORS, esa capa queda vacía y el resto del mapa sigue funcionando; ver también [fogos.pt](https://fogos.pt).
 - **Satélite:** capas WMS [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/).
 
 La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas. Las detecciones satélite no son despachos de extinción.

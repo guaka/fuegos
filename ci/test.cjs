@@ -146,18 +146,12 @@ async function main() {
       "isStyleLoaded",
     ]) {
       assert.ok(js.includes(needle), `missing ${needle}`);
-      assert.ok(js.includes("data/pt-fires.json"), "missing local PT snapshot path");
     }
     assert.ok(
       !/\.\.\.\s*map\.getStyle\s*\(/.test(js),
       "must not call setStyle({...map.getStyle()}) — breaks MapLibre before load"
     );
-  });
-
-  test("Portugal snapshot file exists and parses", () => {
-    const raw = read("data/pt-fires.json");
-    const data = JSON.parse(raw);
-    assert.ok(Array.isArray(data.data), "data.data must be an array");
+    assert.ok(!js.includes("data/pt-fires.json"), "must not bake PT fires into static data files");
   });
 
   test("LICENSE is AGPL", () => {

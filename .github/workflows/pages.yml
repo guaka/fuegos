@@ -4,9 +4,6 @@ on:
   push:
     branches: [main, master]
   workflow_dispatch:
-  schedule:
-    # Refresh Portugal snapshot periodically (fogos.pt blocks browser CORS).
-    - cron: "0 * * * *"
 
 permissions:
   contents: read
@@ -29,31 +26,9 @@ jobs:
       - name: Stage site
         run: |
           set -euo pipefail
-          mkdir -p _site/data
+          mkdir -p _site
           cp index.html index.js LICENSE README.md _site/
           touch _site/.nojekyll
-
-          # Fresh Portugal incidents (server-side; no CORS). Keep committed snapshot as fallback.
-          if curl -fsSL \
-            -H 'User-Agent: FuegosVivos-Pages/1.0' \
-            -H 'Accept: application/json' \
-            'https://api-lb.fogos.pt/new/fires' \
-            -o _site/data/pt-fires.json
-          then
-            python3 - <<'PY'
-          import json, pathlib
-          p = pathlib.Path("_site/data/pt-fires.json")
-          data = json.loads(p.read_text())
-          assert isinstance(data.get("data"), list), data
-          print(f"pt-fires.json OK — {len(data['data'])} incidents")
-          PY
-          elif [[ -f data/pt-fires.json ]]; then
-            cp data/pt-fires.json _site/data/pt-fires.json
-            echo "Using committed data/pt-fires.json fallback"
-          else
-            echo '{"success":true,"data":[]}' > _site/data/pt-fires.json
-            echo "Wrote empty Portugal snapshot"
-          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
