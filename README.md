@@ -47,6 +47,8 @@ npm run test:all  # both
 
 Shared filter logic lives in [`lib/fires.js`](./lib/fires.js) (used by the map and tests) so we do not silently drop CyL / Galicia points.
 
+Behaviour specs for agents live under [`openspec/`](./openspec/) (`openspec validate --specs`).
+
 GitHub Actions runs unit tests and Playwright on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ## Licencia

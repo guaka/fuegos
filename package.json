@@ -4,8 +4,10 @@
   "scripts": {
     "test": "node ci/test.cjs",
     "test:fires": "node ci/test-fires.cjs",
+    "test:extra": "node ci/test-extra.cjs",
     "test:e2e": "playwright test",
-    "test:all": "npm test && npm run test:e2e"
+    "test:all": "npm test && npm run test:e2e",
+    "openspec:validate": "openspec validate --specs --strict"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1"

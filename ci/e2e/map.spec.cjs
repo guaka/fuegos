@@ -6,11 +6,10 @@ const path = require("path");
 const fixtures = path.join(__dirname, "..", "fixtures");
 const jcylSample = JSON.parse(fs.readFileSync(path.join(fixtures, "jcyl-sample.json"), "utf8"));
 const gaSample = JSON.parse(fs.readFileSync(path.join(fixtures, "galicia-sample.json"), "utf8"));
+const fogosSample = JSON.parse(fs.readFileSync(path.join(fixtures, "fogos-sample.json"), "utf8"));
 
 /** Build a JCyL ODS-like page response from fixture rows (only "keepable" ones for live map). */
 function jcylApiBody() {
-  // Use only rows that should appear after reduce at fixture.now — but browser uses Date.now().
-  // So rewrite parte dates to "today" for e2e determinism.
   const today = new Date().toISOString().slice(0, 10);
   const results = jcylSample.results
     .filter((r) => {
@@ -28,6 +27,38 @@ function jcylApiBody() {
       hora_del_parte: "12:00",
     }));
   return { total_count: results.length, results };
+}
+
+function firmsGeo() {
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [-5.6, 41.5] },
+        properties: {
+          id: "firms:test:1",
+          confidence: "nominal",
+          frp: 12,
+          acq_date: "2026-08-09",
+          acq_time: "1200",
+          source: "FIRMS",
+        },
+      },
+      {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [-3.7, 40.4] },
+        properties: {
+          id: "firms:test:2",
+          confidence: "high",
+          frp: 40,
+          acq_date: "2026-08-09",
+          acq_time: "1210",
+          source: "FIRMS",
+        },
+      },
+    ],
+  };
 }
 
 test.describe("Fuegos Vivos map e2e", () => {
@@ -51,13 +82,29 @@ test.describe("Fuegos Vivos map e2e", () => {
         body: JSON.stringify(rows),
       });
     });
+    await page.route("**/fuegos-proxy.crew.workers.dev/fires**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: { "access-control-allow-origin": "*" },
+        body: JSON.stringify(fogosSample),
+      });
+    });
+    await page.route("**/fuegos-proxy.crew.workers.dev/firms**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/geo+json",
+        headers: { "access-control-allow-origin": "*" },
+        body: JSON.stringify(firmsGeo()),
+      });
+    });
     // Soft-fail remote tiles so map still boots offline-ish
     await page.route("**/basemaps.cartocdn.com/**", (route) => route.abort());
     await page.route("**/elevation-tiles-prod/**", (route) => route.abort());
     await page.route("**/maps.effis.emergency.copernicus.eu/**", (route) => route.abort());
   });
 
-  test("loads lib/fires and shows all mocked CyL + Galicia markers", async ({ page }) => {
+  test("loads lib/fires and shows CyL + Galicia + Portugal markers", async ({ page }) => {
     const pageErrors = [];
     page.on("pageerror", (e) => pageErrors.push(String(e)));
 
@@ -65,25 +112,27 @@ test.describe("Fuegos Vivos map e2e", () => {
     await expect(page.locator("#map")).toBeVisible();
     await expect(page.locator("#ticker")).not.toHaveText(/Cargando/i, { timeout: 30_000 });
 
-    // Wait until status mentions CyL counts
     await expect(page.locator("#status-line")).toContainText(/CyL/i, { timeout: 30_000 });
+    await expect(page.locator("#status-line")).toContainText(/PT/i);
 
     const markerCount = await page.locator(".map-marker").count();
-    const expectedJcyl = jcylApiBody().results;
-    // Deduped CyL + 2 Galicia
     const FF = require("../../lib/fires.js");
-    const reduced = FF.reduceJcylRows(expectedJcyl);
-    const expected = reduced.length + 2;
+    const reduced = FF.reduceJcylRows(jcylApiBody().results);
+    const pt = FF.filterFogosRows(fogosSample);
+    const expected = reduced.length + 2 + pt.length;
     expect(markerCount).toBe(expected);
+    expect(await page.locator(".map-marker.pt").count()).toBe(pt.length);
     expect(pageErrors).toEqual([]);
   });
 
-  test("sidebar lists CyL oficiales before sat regions", async ({ page }) => {
+  test("sidebar starts with national sat then CyL", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator(".panel-title").first()).toContainText(/Castilla y León/i, {
+    await expect(page.locator(".panel-title").first()).toContainText(/Toda España/i, {
       timeout: 30_000,
     });
-    await expect(page.locator(".region-card").first()).toBeVisible();
+    await expect(page.locator(".region-card.is-firms")).toContainText(/2/);
+    await expect(page.locator(".panel-title").nth(1)).toContainText(/Castilla y León/i);
+    await expect(page.getByText("Portugal · fogos.pt")).toBeVisible();
   });
 
   test("hobby warning is visible in the footer", async ({ page }) => {
@@ -99,6 +148,15 @@ test.describe("Fuegos Vivos map e2e", () => {
     await expect(page.locator("header #btn-locate")).toHaveCount(0);
     await expect(page.locator("#btn-recenter")).toHaveCount(0);
     await expect(page.locator("#btn-toggle-list")).toHaveCount(0);
+  });
+
+  test("Portugal layer toggle hides PT markers", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator(".map-marker.pt").first()).toBeVisible({ timeout: 30_000 });
+    const before = await page.locator(".map-marker.pt").count();
+    expect(before).toBeGreaterThan(0);
+    await page.locator("#layer-portugal").uncheck();
+    await expect(page.locator(".map-marker.pt")).toHaveCount(0);
   });
 
   test("selecting a fire opens detail without losing the fire", async ({ page }) => {

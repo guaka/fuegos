@@ -1,0 +1,49 @@
+schema: spec-driven
+
+context: |
+  Project: Fuegos Vivos — fogos.pt-style wildfire map for Spain (+ Portugal).
+  Live site: https://guaka.github.io/fuegos/
+  Repo: https://github.com/guaka/fuegos
+  License: AGPL-3.0-only
+
+  Stack:
+  - Static SPA: index.html + index.js + lib/fires.js (no bundler)
+  - MapLibre GL JS for WebGL browsers; Leaflet raster fallback when WebGL is blocked
+    (e.g. iPhone Lockdown Mode / Modo de aislamiento)
+  - GitHub Pages deploy from main
+  - Cloudflare Worker `fuegos-proxy` at https://fuegos-proxy.crew.workers.dev
+    for CORS: GET /fires (fogos.pt) and GET /firms (NASA FIRMS → Spain GeoJSON)
+
+  Data sources (see DATA.md):
+  - JCyL ODS JSON — official CyL parts (browser CORS)
+  - incendios.gal — Galicia citizen reports (browser CORS)
+  - NASA FIRMS VIIRS Europe CSV — via Worker /firms (not official partes)
+  - fogos.pt ANEPC — via Worker /fires
+  - EFFIS WMS — optional raster layers
+
+  Conventions:
+  - Shared filter/normalize logic lives in lib/fires.js (browser global + Node require)
+  - Never call api-lb.fogos.pt or FIRMS CSV from the browser (CORS); always use the Worker
+  - Do not bake stale fire JSON into the repo for production display
+  - Spanish UI; hobby/experimental disclaimer must stay visible
+  - Prefer small focused changes; keep AGPL headers on new source files
+  - Tests: node ci/test.cjs (unit/contract) + Playwright e2e under ci/e2e/
+  - Commit only when asked; push only when asked
+
+rules:
+  proposal:
+    - State whether the change needs a Worker deploy, Pages-only, or both
+    - Call out official vs satellite vs citizen data so we never mislabel sources
+    - Include Non-goals (e.g. inventing a national ES dispatch API)
+  specs:
+    - Use Given/When/Then scenarios
+    - Separate requirements for CyL, Galicia, FIRMS, and fogos.pt when behavior differs
+    - Reference DATA.md and lib/fires.js as sources of truth for filters
+  design:
+    - Prefer extending lib/fires.js over duplicating filters in index.js or the Worker
+    - Document MapLibre vs Leaflet fallback paths when map behavior changes
+    - Note CORS / ALLOWED_ORIGINS implications for the Worker
+  tasks:
+    - Include unit tests in ci/ for every new filter or normalize path
+    - Include a contract assertion that the SPA does not call blocked upstreams directly
+    - If Worker code changes, add a deploy/checklist task

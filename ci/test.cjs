@@ -10,6 +10,7 @@ const path = require("path");
 const assert = require("assert");
 const FF = require("../lib/fires.js");
 const { runFireTests } = require("./test-fires.cjs");
+const { runExtraTests } = require("./test-extra.cjs");
 
 const root = path.resolve(__dirname, "..");
 let passed = 0;
@@ -407,6 +408,7 @@ async function main() {
   });
 
   await runFireTests(test, testAsync);
+  await runExtraTests(test, testAsync);
 
   console.log("");
   console.log(`${passed} passed, ${failed} failed`);
