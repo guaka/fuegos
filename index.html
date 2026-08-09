@@ -32,6 +32,7 @@
       --status-activo: #b81e1f;
       --status-controlado: #ff6e02;
       --status-estabilizado: #65c4ed;
+      --status-conclusao: #bdbdbd;
       --status-otro: #bdbdbd;
     }
 
@@ -172,6 +173,7 @@
     .dot.activo { background: var(--status-activo); }
     .dot.controlado { background: var(--status-controlado); }
     .dot.estabilizado { background: var(--status-estabilizado); }
+    .dot.conclusao { background: var(--status-conclusao); }
 
     .fire-list {
       list-style: none;
@@ -207,6 +209,7 @@
     .fire-status.activo { background: var(--status-activo); }
     .fire-status.controlado { background: var(--status-controlado); }
     .fire-status.estabilizado { background: var(--status-estabilizado); }
+    .fire-status.conclusao { background: var(--status-conclusao); }
 
     .card-title {
       margin: 0 0 0.35rem;
@@ -230,6 +233,20 @@
     .status-pill.activo { background: var(--status-activo); }
     .status-pill.controlado { background: var(--status-controlado); }
     .status-pill.estabilizado { background: var(--status-estabilizado); }
+    .status-pill.conclusao { background: var(--status-conclusao); color: #333; }
+
+    .country-badge {
+      display: inline-block;
+      margin-right: 0.35rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border-radius: 3px;
+      padding: 0.15rem 0.35rem;
+      vertical-align: middle;
+    }
+    .country-badge.es { background: #c60b1e; color: #fff; }
+    .country-badge.pt { background: #006600; color: #fff; }
 
     .fields {
       display: grid;
@@ -378,6 +395,10 @@
     .map-marker.activo { background: var(--status-activo); }
     .map-marker.controlado { background: var(--status-controlado); }
     .map-marker.estabilizado { background: var(--status-estabilizado); }
+    .map-marker.conclusao { background: var(--status-conclusao); }
+    .map-marker.pt {
+      box-shadow: 0 0 0 2px #006600, 0 1px 4px rgba(0, 0, 0, 0.35);
+    }
     .map-marker.is-selected {
       width: 28px;
       height: 28px;
@@ -441,18 +462,20 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Listado de incendios">
       <div class="sidebar-tools">
-        <input class="search" id="search" type="search" placeholder="Buscar municipio o provincia…" autocomplete="off" />
+        <input class="search" id="search" type="search" placeholder="Buscar municipio, distrito o provincia…" autocomplete="off" />
       </div>
       <p class="meta-line" id="status-line">Actualizando partes oficiales…</p>
       <div class="legend" aria-hidden="true">
-        <span><i class="dot activo"></i> Activo</span>
-        <span><i class="dot controlado"></i> Controlado</span>
-        <span><i class="dot estabilizado"></i> Estabilizado</span>
+        <span><i class="dot activo"></i> Em curso / Activo</span>
+        <span><i class="dot controlado"></i> Em resolução / Controlado</span>
+        <span><i class="dot estabilizado"></i> Vigilância / Estabilizado</span>
+        <span><i class="dot conclusao"></i> Conclusão</span>
       </div>
       <ul class="fire-list" id="fire-list"></ul>
       <p class="footnote">
-        León/Salamanca: partes oficiales JCyL.
-        Badajoz y satélite: detecciones EFFIS/Copernicus (no son despachos).
+        ES (León/Salamanca): partes JCyL.
+        PT (frontera): <a href="https://fogos.pt" rel="noopener">fogos.pt</a> / ANEPC.
+        Badajoz y satélite: EFFIS/Copernicus (detecciones, no despachos).
         <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>
       </p>
     </aside>
@@ -465,7 +488,8 @@
           <button type="button" id="btn-layers" aria-label="Plegar panel">‹</button>
         </div>
         <div class="layers-body">
-          <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> Oficiales CyL</label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> Oficiales CyL (ES)</label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-portugal" checked /> Portugal (fogos.pt)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-hotspots" checked /> Hotspots satélite</label>
           <label class="layer-item"><input type="checkbox" id="layer-burned" /> Área quemada</label>
           <label class="layer-item"><input type="checkbox" id="layer-satellite" /> Vista satélite</label>

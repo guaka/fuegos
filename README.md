@@ -6,10 +6,11 @@ Sitio estático de dos archivos (`index.html` + `index.js`). Sin build. Licencia
 
 ## Datos
 
-- **Castilla y León (León / Salamanca):** partes oficiales del dataset [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (Junta de Castilla y León), con conteo de operativos / terrestres / aéreos a partir del texto de medios.
-- **Badajoz y contexto satélite:** capas WMS de [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) (hotspots VIIRS y área quemada reciente).
+- **España — Castilla y León (León / Salamanca):** partes oficiales [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL), con conteo de medios a partir del texto.
+- **Portugal — distritos fronterizos:** incidentes activos de [fogos.pt](https://fogos.pt) (ANEPC), filtrados al área León–Salamanca–Badajoz / frontera.
+- **Satélite:** capas WMS [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/).
 
-La interfaz sigue el patrón de [fogos.pt](https://fogos.pt): barra naranja, listado en tarjetas, mapa y panel de capas.
+La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas. Las detecciones satélite no son despachos de extinción.
 
 ## Uso local
 
@@ -31,7 +32,11 @@ No hay paso de build: se sirven `index.html` e `index.js` tal cual.
 
 ## CI
 
-El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) comprueba archivos, sintaxis de `index.js`, contratos básicos del HTML/JS y humo de las APIs JCyL y EFFIS.
+```bash
+node ci/test.cjs
+```
+
+GitHub Actions runs the same suite on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): file contracts, JS syntax, resource/status helpers, and smoke checks for JCyL, fogos.pt, and EFFIS.
 
 ## Licencia
 

@@ -6,69 +6,16 @@ on:
   pull_request:
 
 jobs:
-  check:
-    name: Static checks
+  test:
+    name: Basic tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Required files
-        run: |
-          test -f index.html
-          test -f index.js
-          test -f LICENSE
-          test -f README.md
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-      - name: JavaScript syntax
-        run: node --check index.js
-
-      - name: HTML contract
-        run: |
-          set -euo pipefail
-          grep -q 'Fuegos' index.html
-          grep -q 'id="map"' index.html
-          grep -q 'id="fire-list"' index.html
-          grep -q 'id="sidebar"' index.html
-          grep -q './index.js' index.html
-          grep -q 'maplibre-gl' index.html
-          grep -qi 'AGPL' index.html
-          grep -qi 'AGPL' LICENSE
-          grep -q 'ticker' index.html
-          grep -q 'layer-oficiales' index.html
-
-      - name: JS contract
-        run: |
-          set -euo pipefail
-          grep -q 'analisis.datosabiertos.jcyl.es' index.js
-          grep -q 'maps.effis.emergency.copernicus.eu' index.js
-          grep -q 'LEÓN' index.js
-          grep -q 'SALAMANCA' index.js
-          grep -q 'maplibregl' index.js
-          grep -q 'parseResources' index.js
-          grep -q 'updateTicker' index.js
-
-      - name: JCyL API smoke
-        run: |
-          set -euo pipefail
-          SINCE=$(date -u -d '14 days ago' +%F)
-          WHERE="fecha_del_parte >= date'${SINCE}' and provincia in ('LEÓN','SALAMANCA') and situacion_actual in ('ACTIVO','CONTROLADO','ESTABILIZADO')"
-          URL="https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records?limit=1"
-          CODE=$(curl -sS -o /tmp/jcyl.json -w '%{http_code}' --get "$URL" --data-urlencode "where=${WHERE}")
-          test "$CODE" = "200"
-          python3 - <<'PY'
-          import json
-          data = json.load(open("/tmp/jcyl.json"))
-          assert "results" in data, data
-          assert "total_count" in data, data
-          print(f"JCyL OK — total_count={data['total_count']}")
-          PY
-
-      - name: EFFIS WMS smoke
-        run: |
-          set -euo pipefail
-          START=$(date -u -d '7 days ago' +%F)
-          END=$(date -u +%F)
-          URL="https://maps.effis.emergency.copernicus.eu/effis?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=viirs.hs&STYLES=default&FORMAT=image/png&TRANSPARENT=true&SRS=EPSG:4326&WIDTH=64&HEIGHT=64&BBOX=-7,40,-6,41&TIME=${START}/${END}"
-          curl -sS -o /tmp/effis.png "$URL"
-          file /tmp/effis.png | grep -qi 'PNG image'
-          echo 'EFFIS OK'
+      - name: Run test suite
+        run: node ci/test.cjs
