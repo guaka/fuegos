@@ -240,6 +240,11 @@
       background: linear-gradient(180deg, #fff8f2 0%, var(--card) 75%);
     }
     .region-card.is-firms .region-name { color: #c2410c; }
+    .region-card.is-pt {
+      border: 1px solid rgba(0, 102, 0, 0.35);
+      background: linear-gradient(180deg, #f3faf3 0%, var(--card) 75%);
+    }
+    .region-card.is-pt .region-name { color: #006600; }
     .region-head {
       display: flex;
       align-items: baseline;
@@ -645,6 +650,9 @@
     .map-marker.citizen {
       box-shadow: 0 0 0 2px #1565c0, 0 1px 4px rgba(0, 0, 0, 0.35);
     }
+    .map-marker.pt {
+      box-shadow: 0 0 0 2px #006600, 0 1px 4px rgba(0, 0, 0, 0.35);
+    }
     .map-marker.is-selected {
       z-index: 5;
       transform: translate(-50%, -50%) scale(1.12);
@@ -794,8 +802,8 @@
       <p class="footnote">
         ES: partes JCyL (CyL) + avisos cidadáns <a href="https://incendios.gal/" rel="noopener" target="_blank">incendios.gal</a> (Galicia).
         Resto de España: detecciones satélite FIRMS (y EFFIS opcional).
+        Portugal: despachos <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a>.
         En iPhone con Modo de aislamiento el mapa usa teselas (sin WebGL).
-        Portugal: ver <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a>.
         <a href="./about.html">Sobre la cobertura</a> ·
         <a href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a> ·
         <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>
@@ -830,12 +838,13 @@
         <div class="layers-body">
           <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> Oficiales CyL (ES)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-galicia" checked /> Galicia (incendios.gal)</label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-portugal" checked /> Portugal (fogos.pt)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-firms" checked /> Detecciones satélite (FIRMS)</label>
           <label class="layer-item"><input type="checkbox" id="layer-hotspots" /> Teselas EFFIS</label>
           <label class="layer-item"><input type="checkbox" id="layer-burned" /> Área quemada</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-relief" checked /> Relieve</label>
           <label class="layer-item"><input type="checkbox" id="layer-satellite" /> Vista satélite</label>
-          <p class="layers-note">Portugal → <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a></p>
+          <p class="layers-note">Portugal vía proxy Cloudflare → <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a></p>
         </div>
       </div>
     </div>

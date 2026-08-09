@@ -145,7 +145,7 @@ async function main() {
     }
   });
 
-  test("index.js wires ES + Galicia + FIRMS (no fogos.pt API)", () => {
+  test("index.js wires ES + Galicia + FIRMS + fogos.pt via Worker", () => {
     const js = read("index.js");
     const html = read("index.html");
     const lib = read("lib/fires.js");
@@ -154,9 +154,12 @@ async function main() {
       "incendios.gal/api/incidencias",
       "maps.effis.emergency.copernicus.eu",
       "fuegos-proxy.crew.workers.dev/firms",
+      "fuegos-proxy.crew.workers.dev/fires",
       "fetchJcylFires",
       "fetchGaliciaFires",
+      "fetchFogosPtFires",
       "fetchFirmsHotspots",
+      "filterFogosRows",
       "ensureFirmsLayers",
       "GALICIA_BBOX",
       "España · satélite",
@@ -182,6 +185,7 @@ async function main() {
     }
     assert.ok(html.includes("./lib/fires.js"));
     assert.ok(html.includes("layer-firms"));
+    assert.ok(html.includes("layer-portugal"));
     assert.ok(js.includes("leaflet@1.9.4"), "Leaflet CDN for Lockdown/no-WebGL fallback");
     assert.ok(js.includes("Modo de aislamiento") || html.includes("Modo de aislamiento"));
     assert.ok(lib.includes("OFFICIAL_PROVINCES"));
@@ -190,14 +194,14 @@ async function main() {
     assert.ok(lib.includes("PARTE_LOOKBACK_DAYS"));
     assert.ok(lib.includes("function mergeHistory"));
     assert.ok(lib.includes("pointInSpain"));
+    assert.ok(lib.includes("filterFogosRows"));
     assert.ok(js.includes("reduceJcylRows(rows)"));
     assert.ok(js.includes("filterGaliciaRows(rows)"));
     assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"), "default Spain bbox");
     assert.ok(!js.includes("REGION_SECTIONS"), "no per-CCAA sat card list");
     assert.ok(!js.includes("ver mapa"), "no empty ver-mapa sat cards");
     assert.ok(!js.includes("is-empty"), "sat cards must stay clickable (not is-empty)");
-    assert.ok(!js.includes("api-lb.fogos.pt"), "must not call fogos.pt API from the browser");
-    assert.ok(!js.includes("fetchFogosPtFires"), "must not fetch fogos.pt fires");
+    assert.ok(!js.includes("api-lb.fogos.pt"), "browser must use Worker, not api-lb directly");
     assert.ok(
       !/\.\.\.\s*map\.getStyle\s*\(/.test(js),
       "must not call setStyle({...map.getStyle()}) — breaks MapLibre before load"

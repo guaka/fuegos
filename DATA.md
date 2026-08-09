@@ -10,7 +10,7 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 | [incendios.gal](https://incendios.gal/) API | Galicia | Avisos cidadáns (JSON) | Sí | Sí (`*`) | **Sí** — puntos Galicia | No oficial; filtramos tipos lume/fume/queimada/medios/afectación, ≤14 días |
 | [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) WMS | Europa (toda España) | Hotspots VIIRS + área quemada | Sí (satélite) | Sí (teselas WMS) | **Sí** — capa opcional | Detecciones, **no** despachos de extinción |
 | [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) VIIRS Europe CSV | Europa → filtrado ES | Hotspots satélite (puntos) | Sí (24h) | **No** (CORS) | **Sí** — vía proxy Worker `/firms` | Suomi-NPP + NOAA-20; confianza nominal/high; cluster ~0.05° |
-| [fogos.pt](https://fogos.pt) / `api-lb.fogos.pt` | Portugal | Despachos ANEPC (JSON) | Sí | **No** (CORS) desde github.io | Solo **enlace** (+ Worker `/fires` listo) | API útil con proxy; SPA no la pinta aún |
+| [fogos.pt](https://fogos.pt) / `api-lb.fogos.pt` | Portugal | Despachos ANEPC (JSON) | Sí | **No** (CORS) desde github.io | **Sí** — vía proxy Worker `/fires` | Naturaleza `31xx`; excluye Conclusão/Encerrada |
 | [ppetru/incidents-pt](https://github.com/ppetru/incidents-pt) | Portugal | Espejo scrape ANEPC → JSON en GitHub | ~horario | Sí (raw GitHub) | No (candidato) | Incluye todos los incidentes; filtrar incendios (`Natureza` 31xx) |
 | ICNF `fogos.icnf.pt` webservice | Portugal | Inventario/rural (XML grande) | Histórico / pesado | Variable | No | ~MB de XML; mal encaje para SPA en vivo |
 | ANEPC / prociv ArcGIS | Portugal | Oficial GIS | Sí | A menudo **no** | No | Auth / CORS hostiles para SPA |
@@ -48,9 +48,9 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 
 ### fogos.pt (Portugal)
 
-- Referencia de producto e inspiración de UI.
-- En la app: **solo enlace** a [fogos.pt](https://fogos.pt).
-- Worker también expone `GET /fires` (proxy fogos) por si se cablea después.
+- **Proxy:** `https://fuegos-proxy.crew.workers.dev/fires` → `api-lb.fogos.pt/new/fires` (CORS para github.io).
+- **Qué usamos:** incendios rurales abiertos (`naturezaCode` 31xx) con coordenadas; sin Conclusão/Encerrada.
+- **En el mapa:** marcadores PT (borde verde) + resumen por distrito en el panel.
 
 ## Evaluadas / no integradas (aún)
 
@@ -79,8 +79,8 @@ Hasta que exista otra fuente abierta usable en el navegador, el resto de España
 │  · Puntos FIRMS (toda ES, satélite)         │
 │  · Marcadores JCyL (CyL oficiales)          │
 │  · Marcadores incendios.gal (Galicia)       │
+│  · Marcadores fogos.pt (Portugal)           │
 │  · Capas EFFIS opcionales                   │
-│  · Portugal → enlace fogos.pt               │
 └─────────────────────────────────────────────┘
 ```
 
@@ -95,7 +95,9 @@ Hasta que exista otra fuente abierta usable en el navegador, el resto de España
 | JCyL dataset | https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/ |
 | incendios.gal | https://incendios.gal/ |
 | EFFIS | https://forest-fire.emergency.copernicus.eu/ |
+| FIRMS | https://firms.modaps.eosdis.nasa.gov/ |
 | fogos.pt | https://fogos.pt |
+| Proxy Worker | https://fuegos-proxy.crew.workers.dev/ |
 | EGIF / MITECO | https://www.miteco.gob.es/es/biodiversidad/temas/incendios-forestales/estadisticas-datos.html |
 | incidents-pt | https://github.com/ppetru/incidents-pt |
 | Código de esta app | https://github.com/guaka/fuegos |

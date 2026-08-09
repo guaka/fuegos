@@ -10,8 +10,8 @@ Resumen corto; detalle y comparación en **[DATA.md](./DATA.md)** (tablas de fue
 
 - **Oficiales en vivo:** [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL) — Castilla y León.
 - **Galicia:** avisos cidadáns [incendios.gal](https://incendios.gal/).
-- **Resto de CCAA:** resumen por provincia/comunidad + [EFFIS](https://forest-fire.emergency.copernicus.eu/) (sin parte diario abierto comparable).
-- **Portugal:** enlace a [fogos.pt](https://fogos.pt).
+- **Resto de España:** detecciones [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) (vía proxy) + [EFFIS](https://forest-fire.emergency.copernicus.eu/) opcional.
+- **Portugal:** despachos [fogos.pt](https://fogos.pt) vía Cloudflare Worker (`/fires`).
 
 La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas.
 

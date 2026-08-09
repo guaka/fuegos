@@ -1,6 +1,15 @@
 # fuegos-proxy (Cloudflare Worker)
 
-Small CORS proxy so the GitHub Pages SPA can read `api-lb.fogos.pt/new/fires`.
+Small CORS proxy so the GitHub Pages SPA can read fogos.pt and NASA FIRMS.
+
+## Endpoints
+
+| Path | Upstream |
+|------|----------|
+| `GET /fires` | `https://api-lb.fogos.pt/new/fires` |
+| `GET /firms` | NASA FIRMS VIIRS Europe CSVs → Spain GeoJSON |
+
+CORS for `https://guaka.github.io` (+ local static servers).
 
 ## One-time setup
 
@@ -29,12 +38,17 @@ npm run deploy
 
 Copy the printed URL, e.g. `https://fuegos-proxy.<you>.workers.dev/fires`.
 
-## Wire the SPA later
+## Wire the SPA
 
-Point `index.js` at that `/fires` URL (not `api-lb.fogos.pt` directly). Keep origins in `src/index.js` (`ALLOWED_ORIGINS`) in sync with where the site is served.
+`index.js` calls:
+
+- `https://fuegos-proxy.crew.workers.dev/fires`
+- `https://fuegos-proxy.crew.workers.dev/firms`
+
+Keep origins in `src/index.js` (`ALLOWED_ORIGINS`) in sync with where the site is served.
 
 ## Notes
 
 - Upstream often wants a real `User-Agent` (bare curl can get 403).
-- Not an open proxy: only `/fires` → fogos.
-- Cache ~60s to be gentle on fogos.
+- Not an open proxy: only `/fires` and `/firms`.
+- Cache ~60s (fogos) / ~300s (FIRMS).

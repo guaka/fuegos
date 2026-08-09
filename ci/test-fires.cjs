@@ -221,6 +221,71 @@ async function runFireTests(test, testAsync) {
     assert.ok(!FF.pointInSpain(43.6, 1.44), "Toulouse");
     assert.ok(!FF.pointInSpain(33.97, -6.85), "Rabat");
   });
+
+  test("filterFogosRows keeps open rural fires and drops conclusão", () => {
+    const payload = {
+      success: true,
+      data: [
+        {
+          id: "1",
+          lat: 41.1,
+          lng: -8.2,
+          status: "Em Resolução",
+          statusCode: 7,
+          naturezaCode: "3101",
+          natureza: "Mato",
+          district: "Porto",
+          concelho: "Gondomar",
+          location: "Porto, Gondomar",
+          date: "09-08-2026",
+          hour: "12:00",
+          man: 10,
+          terrain: 4,
+          aerial: 1,
+          coords: true,
+        },
+        {
+          id: "2",
+          lat: 40.2,
+          lng: -8.4,
+          status: "Conclusão",
+          statusCode: 8,
+          naturezaCode: "3101",
+          district: "Coimbra",
+          concelho: "Coimbra",
+          date: "08-08-2026",
+          hour: "10:00",
+          man: 0,
+          terrain: 0,
+          aerial: 0,
+          coords: true,
+        },
+        {
+          id: "3",
+          lat: 38.7,
+          lng: -9.1,
+          status: "Vigilância",
+          statusCode: 9,
+          naturezaCode: "2101",
+          district: "Lisboa",
+          concelho: "Lisboa",
+          date: "09-08-2026",
+          hour: "11:00",
+          man: 2,
+          terrain: 1,
+          aerial: 0,
+          coords: true,
+        },
+      ],
+    };
+    const fires = FF.filterFogosRows(payload);
+    assert.strictEqual(fires.length, 1);
+    assert.strictEqual(fires[0].id, "pt:1");
+    assert.strictEqual(fires[0].country, "PT");
+    assert.strictEqual(fires[0].source, "fogos.pt");
+    assert.strictEqual(fires[0].statusClass, "controlado");
+    assert.ok(fires[0].parteMs > 0);
+  });
 }
 
 module.exports = { runFireTests };

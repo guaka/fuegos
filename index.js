@@ -20,6 +20,7 @@
     HISTORY_LOOKBACK_DAYS,
     reduceJcylRows,
     filterGaliciaRows,
+    filterFogosRows,
     jcylWhereClause,
     isoDate,
     daysAgo,
@@ -36,6 +37,7 @@
     "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records";
   const GALICIA_URL = "https://incendios.gal/api/incidencias";
   const FIRMS_URL = "https://fuegos-proxy.crew.workers.dev/firms";
+  const FOGOS_URL = "https://fuegos-proxy.crew.workers.dev/fires";
   const EFFIS_WMS = "https://maps.effis.emergency.copernicus.eu/effis";
 
   const STREET_TILES = [
@@ -60,6 +62,7 @@
     layersPanel: document.getElementById("layers-panel"),
     layerOficiales: document.getElementById("layer-oficiales"),
     layerGalicia: document.getElementById("layer-galicia"),
+    layerPortugal: document.getElementById("layer-portugal"),
     layerFirms: document.getElementById("layer-firms"),
     layerHotspots: document.getElementById("layer-hotspots"),
     layerBurned: document.getElementById("layer-burned"),
@@ -736,6 +739,12 @@
     return res.json();
   }
 
+  async function fetchFogosPtFires() {
+    const res = await fetch(FOGOS_URL, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error(`fogos proxy HTTP ${res.status}`);
+    return filterFogosRows(await res.json());
+  }
+
   function clearMarkers() {
     for (const m of markers.values()) {
       if (mapKind === "leaflet" && map) {
@@ -750,6 +759,9 @@
   function layerAllows(fire) {
     if (fire.source === "incendios.gal") {
       return !!(els.layerGalicia && els.layerGalicia.checked);
+    }
+    if (fire.source === "fogos.pt") {
+      return !!(els.layerPortugal && els.layerPortugal.checked);
     }
     return !!(els.layerOficiales && els.layerOficiales.checked);
   }
@@ -889,7 +901,7 @@
       const recency = recencyClass(fire);
       el.className = `map-marker ${fire.statusClass} ${size} ${recency}${
         fire.source === "incendios.gal" ? " citizen" : ""
-      }`;
+      }${fire.country === "PT" ? " pt" : ""}`;
       const medios = fire.man + fire.terrain + fire.aerial;
       el.title = `${fire.locationLine} — ${fire.status} · parte ${formatRelativeParte(fire)} · ${medios} medios`;
       el.setAttribute(
@@ -1056,7 +1068,13 @@
             <p class="field-value">${escapeHtml(String(fire.level ?? "—"))}</p>
           </div>
           <div>
-            <h6 class="field-label">${fire.source === "incendios.gal" ? "Origen" : "Causa probable"}</h6>
+            <h6 class="field-label">${
+              fire.source === "incendios.gal"
+                ? "Origen"
+                : fire.source === "fogos.pt"
+                  ? "Naturaleza"
+                  : "Causa probable"
+            }</h6>
             <p class="field-value">${escapeHtml(String(fire.cause ?? "—"))}</p>
           </div>
           <div>
@@ -1066,7 +1084,11 @@
                 ? fire.detailUrl
                   ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">incendios.gal</a> (avisos cidadáns)`
                   : "incendios.gal"
-                : "España · JCyL"
+                : fire.source === "fogos.pt"
+                  ? fire.detailUrl
+                    ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">fogos.pt</a> (ANEPC)`
+                    : "fogos.pt"
+                  : "España · JCyL"
             }</p>
           </div>
         </div>
@@ -1194,12 +1216,82 @@
     });
   }
 
+  function renderPortugalSection(ptFires) {
+    const title = document.createElement("p");
+    title.className = "panel-title";
+    title.textContent = "Portugal · fogos.pt";
+    appendListItem(title);
+
+    if (!ptFires.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "No hay incendios abiertos en fogos.pt ahora.";
+      appendListItem(empty);
+      return;
+    }
+
+    const summary = document.createElement("button");
+    summary.type = "button";
+    summary.className = "region-card is-pt";
+    const activos = ptFires.filter((f) => f.statusClass === "activo").length;
+    summary.innerHTML = `
+      <div class="region-head">
+        <h3 class="region-name">Portugal</h3>
+        <span class="region-count"><strong>${ptFires.length}</strong> en curso</span>
+      </div>
+      <p class="region-meta">${
+        activos ? `${activos} activos · ` : ""
+      }Despachos ANEPC vía fogos.pt — pulsa para ver todos</p>
+    `;
+    summary.addEventListener("click", () => {
+      if (els.layerPortugal && !els.layerPortugal.checked) {
+        els.layerPortugal.checked = true;
+        els.layerPortugal.closest(".layer-item")?.classList.toggle("is-on", true);
+        renderSidebar();
+        renderMarkers();
+        updateTicker();
+      }
+      flyToFires(ptFires);
+      showSidebar(true);
+    });
+    appendListItem(summary);
+
+    const regions = regionStats(ptFires);
+    regions.forEach((region, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "region-card";
+      btn.style.animationDelay = `${Math.min(i, 10) * 0.03}s`;
+      btn.innerHTML = `
+        <div class="region-head">
+          <h3 class="region-name">${escapeHtml(region.province)}</h3>
+          <span class="region-count"><strong>${region.total}</strong></span>
+        </div>
+        <p class="region-meta">${escapeHtml(
+          [
+            region.activo && `${region.activo} activo${region.activo === 1 ? "" : "s"}`,
+            region.controlado && `${region.controlado} en resolución`,
+            region.estabilizado && `${region.estabilizado} vigilancia`,
+          ]
+            .filter(Boolean)
+            .join(" · ") || "En curso"
+        )}</p>
+      `;
+      btn.addEventListener("click", () => {
+        flyToFires(region.fires);
+        showSidebar(true);
+      });
+      appendListItem(btn);
+    });
+  }
+
   function renderRegionOverview(list) {
     els.sidebar.classList.remove("is-detail");
     els.sidebar.setAttribute("aria-label", "Resumen por región");
 
     const cylFires = list.filter((f) => f.source === "JCyL");
     const gaFires = list.filter((f) => f.source === "incendios.gal");
+    const ptFires = list.filter((f) => f.source === "fogos.pt");
 
     const nation = document.createElement("p");
     nation.className = "panel-title";
@@ -1215,17 +1307,13 @@
     appendListItem(gaTitle);
     renderGaliciaCard(gaFires);
 
+    renderPortugalSection(ptFires);
+
     const sat = document.createElement("p");
     sat.className = "overview-note";
     sat.innerHTML =
-      "Fuera de CyL no hay parte diario nacional abierto: el mapa muestra <strong>detecciones FIRMS</strong> (calor satélite). Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a>.";
+      "Fuera de CyL no hay parte diario nacional abierto: el mapa muestra <strong>detecciones FIRMS</strong> (calor satélite). Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a>. Portugal: <a href=\"https://fogos.pt\" rel=\"noopener\" target=\"_blank\">fogos.pt</a>.";
     appendListItem(sat);
-
-    const pt = document.createElement("p");
-    pt.className = "overview-note";
-    pt.innerHTML =
-      'Portugal: ver <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a>.';
-    appendListItem(pt);
   }
 
   function renderSidebar() {
@@ -1257,6 +1345,7 @@
     const visible = filteredFires();
     const cyl = visible.filter((f) => f.source === "JCyL").length;
     const ga = visible.filter((f) => f.source === "incendios.gal").length;
+    const pt = visible.filter((f) => f.source === "fogos.pt").length;
     const hot = visible.filter((f) => f.statusClass === "activo").length;
     const now = new Date();
     const hhmm = now.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
@@ -1264,6 +1353,7 @@
     els.ticker.textContent =
       `${hhmm} — ${cyl} CyL` +
       `${ga ? ` · ${ga} Galicia` : ""}` +
+      `${pt ? ` · ${pt} PT` : ""}` +
       `${hot ? ` · ${hot} activos` : ""}` +
       `${firmsOn && firmsCount ? ` · ${firmsCount} satélite ES` : ""}`;
   }
@@ -1288,17 +1378,20 @@
   }
 
   async function refresh() {
-    els.status.textContent = "Actualizando CyL, Galicia y satélite España…";
+    els.status.textContent = "Actualizando CyL, Galicia, Portugal y satélite…";
     try {
-      const [esResult, gaResult, firmsResult] = await Promise.allSettled([
+      const [esResult, gaResult, ptResult, firmsResult] = await Promise.allSettled([
         fetchJcylFires(),
         fetchGaliciaFires(),
+        fetchFogosPtFires(),
         fetchFirmsHotspots(),
       ]);
       const esFires = esResult.status === "fulfilled" ? esResult.value : [];
       const gaFires = gaResult.status === "fulfilled" ? gaResult.value : [];
+      const ptFires = ptResult.status === "fulfilled" ? ptResult.value : [];
       if (esResult.status === "rejected") console.error(esResult.reason);
       if (gaResult.status === "rejected") console.error(gaResult.reason);
+      if (ptResult.status === "rejected") console.error(ptResult.reason);
       if (firmsResult.status === "rejected") console.error(firmsResult.reason);
 
       if (firmsResult.status === "fulfilled") {
@@ -1307,13 +1400,14 @@
         setFirmsData({ type: "FeatureCollection", features: [] });
       }
 
-      fires = [...esFires, ...gaFires].sort(compareFires);
+      fires = [...esFires, ...gaFires, ...ptFires].sort(compareFires);
       const notes = [];
       if (esResult.status === "rejected") notes.push("CyL falló");
       if (gaResult.status === "rejected") notes.push("Galicia falló");
+      if (ptResult.status === "rejected") notes.push("Portugal falló");
       if (firmsResult.status === "rejected") notes.push("FIRMS falló");
       els.status.textContent =
-        `Mapa España: ${firmsCount} detecciones satélite (FIRMS) · CyL ${esFires.length} oficiales · Galicia ${gaFires.length} avisos. ` +
+        `Mapa: ${firmsCount} satélite ES · CyL ${esFires.length} · Galicia ${gaFires.length} · PT ${ptFires.length}. ` +
         `Actualizado ${formatUpdated(new Date())}` +
         (notes.length ? ` · ${notes.join(", ")}` : "");
 
@@ -1325,9 +1419,14 @@
       const hashId = decodeURIComponent((location.hash || "").replace(/^#/, ""));
       if (hashId && fires.some((f) => f.id === hashId)) selectFire(hashId, true);
 
-      if (!fires.length && esResult.status === "rejected" && gaResult.status === "rejected" && firmsResult.status === "rejected") {
-        els.list.innerHTML =
-          '<li class="error">No se pudieron cargar los datos.</li>';
+      if (
+        !fires.length &&
+        esResult.status === "rejected" &&
+        gaResult.status === "rejected" &&
+        ptResult.status === "rejected" &&
+        firmsResult.status === "rejected"
+      ) {
+        els.list.innerHTML = '<li class="error">No se pudieron cargar los datos.</li>';
       }
     } catch (err) {
       console.error(err);
@@ -1482,6 +1581,15 @@
         updateTicker();
       });
     }
+    if (els.layerPortugal) {
+      els.layerPortugal.addEventListener("change", () => {
+        const on = els.layerPortugal.checked;
+        els.layerPortugal.closest(".layer-item")?.classList.toggle("is-on", on);
+        renderSidebar();
+        renderMarkers();
+        updateTicker();
+      });
+    }
     els.layerSatellite.addEventListener("change", () => {
       const on = els.layerSatellite.checked;
       els.layerSatellite.closest(".layer-item")?.classList.toggle("is-on", on);
@@ -1492,6 +1600,7 @@
     [
       els.layerOficiales,
       els.layerGalicia,
+      els.layerPortugal,
       els.layerFirms,
       els.layerHotspots,
       els.layerBurned,
