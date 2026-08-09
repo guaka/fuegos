@@ -26,7 +26,7 @@
       --line: rgba(0, 0, 0, 0.08);
       --bg: #f5f5f5;
       --card: #fff;
-      --nav-h: 44px;
+      --nav-h: 48px;
       --sidebar-w: min(400px, 38vw);
       --font: "Source Sans 3", system-ui, sans-serif;
       --font-display: "Raleway", sans-serif;
@@ -59,18 +59,18 @@
       align-items: center;
       gap: 0.65rem;
       padding: 0 0.75rem;
-      /* Map shows through — light scrim for contrast */
+      /* Stronger scrim so brand + pills stay readable over the map */
       background: linear-gradient(
         180deg,
-        rgba(18, 14, 10, 0.55) 0%,
-        rgba(18, 14, 10, 0.28) 55%,
-        rgba(18, 14, 10, 0.08) 100%
+        rgba(12, 10, 8, 0.82) 0%,
+        rgba(12, 10, 8, 0.62) 70%,
+        rgba(12, 10, 8, 0.35) 100%
       );
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      box-shadow: none;
+      backdrop-filter: blur(12px) saturate(1.1);
+      -webkit-backdrop-filter: blur(12px) saturate(1.1);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
       color: #fff;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
     }
     .brand {
       display: flex;
@@ -79,57 +79,60 @@
       text-decoration: none;
       color: #fff !important;
       line-height: 1;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
     }
     .brand-mark {
       font-family: var(--font-display);
       font-weight: 700;
-      font-size: 0.95rem;
-      letter-spacing: 0.02em;
+      font-size: 1.05rem;
+      letter-spacing: 0.015em;
       text-transform: none;
     }
     .ticker {
       flex: 1;
       min-width: 0;
       margin: 0;
-      font-size: 0.7rem;
-      font-weight: 500;
+      font-size: 0.72rem;
+      font-weight: 600;
       letter-spacing: 0.01em;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      opacity: 0.82;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+      opacity: 0.95;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     }
     .top-actions {
       display: flex;
-      gap: 0.35rem;
+      gap: 0.4rem;
       flex-shrink: 0;
       align-items: center;
     }
     .top-btn {
       appearance: none;
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      background: rgba(255, 255, 255, 0.22);
       color: #fff;
       border-radius: 999px;
-      padding: 0.28rem 0.7rem;
-      font-size: 0.75rem;
-      font-weight: 600;
+      padding: 0.32rem 0.78rem;
+      font-size: 0.8rem;
+      font-weight: 700;
       cursor: pointer;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 1.85rem;
+      min-height: 1.95rem;
       line-height: 1;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     }
     .top-btn:hover,
     .top-btn.is-active {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.28);
-      border-color: rgba(255, 255, 255, 0.55);
+      color: #1a120c;
+      background: #fff;
+      border-color: #fff;
+      text-shadow: none;
     }
     button.top-btn { font-family: inherit; }
 
@@ -155,22 +158,6 @@
       gap: 0.65rem;
       transition: transform 0.25s ease;
     }
-    .sidebar-tools {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-    }
-    .search {
-      flex: 1;
-      border: 0;
-      border-radius: 0.5rem;
-      padding: 0.65rem 0.8rem;
-      background: var(--card);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-      font-size: 0.9rem;
-      color: var(--ink);
-    }
-    .search:focus { outline: 2px solid rgba(255, 110, 2, 0.35); }
     .meta-line {
       margin: 0;
       font-size: 0.75rem;
@@ -201,10 +188,23 @@
       display: inline-block;
       background: var(--status-otro);
     }
-    .dot.activo { background: var(--status-activo); }
-    .dot.controlado { background: var(--status-controlado); }
-    .dot.estabilizado { background: var(--status-estabilizado); }
-    .dot.conclusao { background: var(--status-conclusao); }
+    .dot.activo,
+    .fire-status.activo,
+    .status-pill.activo,
+    .map-marker.activo { background: var(--status-activo); }
+    .dot.controlado,
+    .fire-status.controlado,
+    .status-pill.controlado,
+    .map-marker.controlado { background: var(--status-controlado); }
+    .dot.estabilizado,
+    .fire-status.estabilizado,
+    .status-pill.estabilizado,
+    .map-marker.estabilizado { background: var(--status-estabilizado); }
+    .dot.conclusao,
+    .fire-status.conclusao,
+    .status-pill.conclusao,
+    .map-marker.conclusao { background: var(--status-conclusao); }
+    .status-pill.conclusao { color: #333; }
 
     .legend-hint {
       margin: 0.15rem 0 0.65rem;
@@ -222,8 +222,7 @@
       gap: 0.55rem;
     }
     .sidebar.is-detail .legend,
-    .sidebar.is-detail .legend-hint,
-    .sidebar.is-detail .sidebar-tools {
+    .sidebar.is-detail .legend-hint {
       display: none;
     }
 
@@ -317,30 +316,6 @@
     }
     .overview-note a { font-weight: 600; }
 
-    .hit-card {
-      background: var(--card);
-      border-radius: 0.45rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-      border: 0;
-      width: 100%;
-      text-align: left;
-      padding: 0.7rem 0.9rem;
-      cursor: pointer;
-      color: inherit;
-    }
-    .hit-card:hover { box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1); }
-    .hit-title {
-      margin: 0.2rem 0 0;
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--orange);
-    }
-    .hit-sub {
-      margin: 0.15rem 0 0;
-      font-size: 0.8rem;
-      color: var(--ink-muted);
-    }
-
     .detail-back {
       display: inline-flex;
       align-items: center;
@@ -384,10 +359,6 @@
       height: 8px;
       background: var(--status-otro);
     }
-    .fire-status.activo { background: var(--status-activo); }
-    .fire-status.controlado { background: var(--status-controlado); }
-    .fire-status.estabilizado { background: var(--status-estabilizado); }
-    .fire-status.conclusao { background: var(--status-conclusao); }
 
     .card-title {
       margin: 0 0 0.35rem;
@@ -408,10 +379,6 @@
       border-radius: 3px;
       padding: 0.2rem 0.45rem;
     }
-    .status-pill.activo { background: var(--status-activo); }
-    .status-pill.controlado { background: var(--status-controlado); }
-    .status-pill.estabilizado { background: var(--status-estabilizado); }
-    .status-pill.conclusao { background: var(--status-conclusao); color: #333; }
 
     .country-badge {
       display: inline-block;
@@ -620,7 +587,8 @@
       line-height: 1.4;
       padding: 0 0.15rem 0.35rem;
     }
-    .footnote-warn {
+    .footnote-warn,
+    .about-hobby-warn {
       margin: 0.5rem 0 0;
       font-size: 0.72rem;
       font-weight: 600;
@@ -629,6 +597,11 @@
       padding: 0.45rem 0.55rem;
       border-left: 3px solid var(--orange);
       background: rgba(255, 110, 2, 0.08);
+    }
+    .about-hobby-warn {
+      margin: 1rem 0 0;
+      font-size: 0.88rem;
+      font-weight: 400;
     }
 
     .map-marker {
@@ -650,10 +623,6 @@
     .map-marker.recency-fresh { opacity: 1; }
     .map-marker.recency-aging { opacity: 0.72; }
     .map-marker.recency-stale { opacity: 0.45; }
-    .map-marker.activo { background: var(--status-activo); }
-    .map-marker.controlado { background: var(--status-controlado); }
-    .map-marker.estabilizado { background: var(--status-estabilizado); }
-    .map-marker.conclusao { background: var(--status-conclusao); }
     .map-marker.citizen {
       box-shadow: 0 0 0 2px #1565c0, 0 1px 4px rgba(0, 0, 0, 0.35);
     }
@@ -755,7 +724,7 @@
     @media (max-width: 900px) {
       :root {
         --sidebar-w: 100%;
-        --sheet-peek: 4.75rem;
+        --sheet-peek: 5.85rem;
         --sheet-open: min(38vh, 340px);
         --sheet-detail: min(62vh, 520px);
         --mobile-sheet: var(--sheet-peek);
@@ -845,14 +814,23 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .sheet-note {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: var(--muted);
+        letter-spacing: 0.01em;
+        line-height: 1.25;
+        text-align: center;
+        max-width: 22rem;
+        padding: 0 0.35rem;
+      }
       /* Peek: only the handle — map stays dominant (fogos.pt-like) */
       .sidebar:not(.is-sheet-open) > :not(.sheet-handle) {
         display: none !important;
       }
 
       .sidebar.is-detail .legend,
-      .sidebar.is-detail .legend-hint,
-      .sidebar.is-detail .sidebar-tools {
+      .sidebar.is-detail .legend-hint {
         display: none;
       }
 
@@ -884,20 +862,22 @@
       }
       .layers.collapsed { display: none; }
       .ticker {
-        font-size: 0.62rem;
-        opacity: 0.78;
+        font-size: 0.68rem;
+        opacity: 0.92;
       }
       .card-title { font-size: 1.05rem; }
       .asset strong { font-size: 1.15rem; }
       .region-card { padding: 0.7rem 0.85rem; }
       .topbar {
-        --nav-h: 42px;
+        --nav-h: 44px;
         padding: 0 0.55rem;
       }
-      .brand-mark { font-size: 0.85rem; }
+      .brand-mark { font-size: 0.92rem; }
       .top-btn {
-        padding: 0.24rem 0.62rem;
-        font-size: 0.72rem;
+        padding: 0.28rem 0.68rem;
+        font-size: 0.76rem;
+        min-height: 1.8rem;
+      }
         min-height: 1.7rem;
       }
     }
@@ -961,6 +941,9 @@
       color: var(--ink-muted);
       font-size: 1.05rem;
     }
+    .about-hero p + p {
+      margin-top: 0.85rem;
+    }
     .about-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -1021,15 +1004,6 @@
       font-size: 0.9rem;
     }
     .about-sources p:last-child { margin-bottom: 0; }
-    .about-hobby-warn {
-      margin: 1rem 0 0;
-      font-size: 0.88rem;
-      line-height: 1.45;
-      color: var(--ink-muted);
-      padding: 0.65rem 0.85rem;
-      border-left: 3px solid var(--orange);
-      background: rgba(255, 110, 2, 0.08);
-    }
     .about-foot {
       display: flex;
       justify-content: center;
@@ -1102,10 +1076,8 @@
       <button type="button" class="sheet-handle" id="btn-sheet" aria-expanded="false" aria-controls="fire-list">
         <span class="sheet-grip" aria-hidden="true"></span>
         <span class="sheet-label" id="sheet-label">Lista de incendios</span>
+        <span class="sheet-note">Experimental · consulta también fuentes oficiales</span>
       </button>
-      <div class="sidebar-tools">
-        <input class="search" id="search" type="search" placeholder="Buscar municipio o provincia…" autocomplete="off" />
-      </div>
       <div class="legend" aria-hidden="true">
         <span><i class="dot activo"></i> Activo</span>
         <span><i class="dot controlado"></i> Controlado</span>
@@ -1167,7 +1139,10 @@
         <p>
           Mapa público de incendios en <strong>toda España</strong>
           (península, Baleares y Canarias) y Portugal.
-          Inspirado en <a href="https://fogos.pt" rel="noopener">fogos.pt</a>.
+        </p>
+        <p>
+          <a href="https://fogos.pt" rel="noopener">fogos.pt</a> es genial —
+          y en España faltaba algo parecido, así que montamos esto en un par de horas.
         </p>
       </div>
 

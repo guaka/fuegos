@@ -17,6 +17,7 @@
   };
 
   const {
+    SOURCE,
     HISTORY_LOOKBACK_DAYS,
     reduceJcylRows,
     filterGaliciaRows,
@@ -32,19 +33,32 @@
    */
   const GALICIA_BBOX = [-9.35, 41.78, -6.7, 43.8];
 
+  const SITE_HOST = "fuegos.guaka.org";
+  const TITLE_HOME = SITE_HOST;
+  const TITLE_ABOUT = `Sobre — ${SITE_HOST}`;
+
   const REFRESH_MS = 5 * 60 * 1000;
   const JCYL_URL =
     "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records";
   const GALICIA_URL = "https://incendios.gal/api/incidencias";
-  const FIRMS_URL = "https://fuegos-proxy.crew.workers.dev/firms";
-  const FOGOS_URL = "https://fuegos-proxy.crew.workers.dev/fires";
+  const PROXY_ORIGIN = "https://fuegos-proxy.crew.workers.dev";
+  const FIRMS_URL = `${PROXY_ORIGIN}/firms`;
+  const FOGOS_URL = `${PROXY_ORIGIN}/fires`;
   const EFFIS_WMS = "https://maps.effis.emergency.copernicus.eu/effis";
 
-  const STREET_TILES = [
-    "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
-    "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
-    "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
-  ];
+  const STREET_TILE_TMPL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png";
+  const STREET_TILES = ["a", "b", "c"].map((s) =>
+    STREET_TILE_TMPL.replace("{s}", s)
+  );
+  const ATTR_OSM_CARTO =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  const FIRMS_COLORS = {
+    high: "#d9480f",
+    nominal: "#ff6e02",
+    other: "#f0a060",
+    stroke: "#fff8f0",
+    glow: "#ff6e02",
+  };
   const SAT_TILES = [
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   ];
@@ -53,7 +67,6 @@
     sidebar: document.getElementById("sidebar"),
     list: document.getElementById("fire-list"),
     ticker: document.getElementById("ticker"),
-    search: document.getElementById("search"),
     btnToggleList: document.getElementById("btn-toggle-list"),
     btnSheet: document.getElementById("btn-sheet"),
     sheetLabel: document.getElementById("sheet-label"),
@@ -90,7 +103,6 @@
   let firmsCount = 0;
   /** @type {{ type: string, features: any[] }} */
   let firmsGeo = { type: "FeatureCollection", features: [] };
-  let query = "";
 
   /** Leaflet-only layer handles */
   /** @type {Record<string, any>} */
@@ -454,8 +466,7 @@
             type: "raster",
             tiles: STREET_TILES,
             tileSize: 256,
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            attribution: ATTR_OSM_CARTO,
           },
           terrain: {
             type: "raster-dem",
@@ -551,15 +562,11 @@
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    Llayers.street = L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
-      {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    Llayers.street = L.tileLayer(STREET_TILE_TMPL, {
+        attribution: ATTR_OSM_CARTO,
         maxZoom: 19,
         subdomains: "abcd",
-      }
-    );
+      });
     Llayers.satellite = L.tileLayer(SAT_TILES[0], {
       attribution: "Esri",
       maxZoom: 19,
@@ -638,7 +645,7 @@
         source: "firms",
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 4, 8, 10, 12, 16],
-          "circle-color": "#ff6e02",
+          "circle-color": FIRMS_COLORS.glow,
           "circle-opacity": 0.22,
           "circle-blur": 0.55,
         },
@@ -653,13 +660,13 @@
             "match",
             ["get", "confidence"],
             "high",
-            "#d9480f",
+            FIRMS_COLORS.high,
             "nominal",
-            "#ff6e02",
-            "#f0a060",
+            FIRMS_COLORS.nominal,
+            FIRMS_COLORS.other,
           ],
           "circle-stroke-width": 1.25,
-          "circle-stroke-color": "#fff8f0",
+          "circle-stroke-color": FIRMS_COLORS.stroke,
           "circle-opacity": 0.92,
         },
       });
@@ -711,10 +718,11 @@
       L.geoJSON(fc, {
         pointToLayer: (feature, latlng) => {
           const conf = (feature.properties && feature.properties.confidence) || "";
-          const color = conf === "high" ? "#d9480f" : "#ff6e02";
+          const color =
+            conf === "high" ? FIRMS_COLORS.high : FIRMS_COLORS.nominal;
           return L.circleMarker(latlng, {
             radius: 5,
-            color: "#fff8f0",
+            color: FIRMS_COLORS.stroke,
             weight: 1.25,
             fillColor: color,
             fillOpacity: 0.92,
@@ -818,24 +826,17 @@
   }
 
   function layerAllows(fire) {
-    if (fire.source === "incendios.gal") {
+    if (fire.source === SOURCE.GALICIA) {
       return !!(els.layerGalicia && els.layerGalicia.checked);
     }
-    if (fire.source === "fogos.pt") {
+    if (fire.source === SOURCE.FOGOS) {
       return !!(els.layerPortugal && els.layerPortugal.checked);
     }
     return !!(els.layerOficiales && els.layerOficiales.checked);
   }
 
   function filteredFires() {
-    const q = query.trim().toLowerCase();
-    return fires.filter((f) => {
-      if (!layerAllows(f)) return false;
-      if (!q) return true;
-      return `${f.municipality} ${f.province} ${f.status} ${f.locationLine} ${f.country} ${f.source}`
-        .toLowerCase()
-        .includes(q);
-    });
+    return fires.filter((f) => layerAllows(f));
   }
 
   function selectFire(id, fly) {
@@ -965,7 +966,7 @@
       const size = markerSizeClass(fire);
       const recency = recencyClass(fire);
       el.className = `map-marker ${fire.statusClass} ${size} ${recency}${
-        fire.source === "incendios.gal" ? " citizen" : ""
+        fire.source === SOURCE.GALICIA ? " citizen" : ""
       }${fire.country === "PT" ? " pt" : ""}`;
       const medios = fire.man + fire.terrain + fire.aerial;
       el.title = `${fire.locationLine} — ${fire.status} · parte ${formatRelativeParte(fire)} · ${medios} medios`;
@@ -1134,9 +1135,9 @@
           </div>
           <div>
             <h6 class="field-label">${
-              fire.source === "incendios.gal"
+              fire.source === SOURCE.GALICIA
                 ? "Origen"
-                : fire.source === "fogos.pt"
+                : fire.source === SOURCE.FOGOS
                   ? "Naturaleza"
                   : "Causa probable"
             }</h6>
@@ -1145,49 +1146,26 @@
           <div>
             <h6 class="field-label">Fuente</h6>
             <p class="field-value">${
-              fire.source === "incendios.gal"
+              fire.source === SOURCE.GALICIA
                 ? fire.detailUrl
-                  ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">incendios.gal</a> (avisos cidadáns)`
-                  : "incendios.gal"
-                : fire.source === "fogos.pt"
+                  ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">${SOURCE.GALICIA}</a> (avisos cidadáns)`
+                  : SOURCE.GALICIA
+                : fire.source === SOURCE.FOGOS
                   ? fire.detailUrl
-                    ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">fogos.pt</a> (ANEPC)`
-                    : "fogos.pt"
-                  : "España · JCyL"
+                    ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">${SOURCE.FOGOS}</a> (ANEPC)`
+                    : SOURCE.FOGOS
+                  : `España · ${SOURCE.JCYL}`
             }</p>
           </div>
         </div>
-        ${fire.source === "incendios.gal" ? "" : assetBlock(fire)}
+        ${fire.source === SOURCE.GALICIA ? "" : assetBlock(fire)}
       </div>
     `;
-    if (fire.source === "JCyL") {
+    if (fire.source === SOURCE.JCYL) {
       const body = card.querySelector(".card-body");
       if (body) body.appendChild(buildResourcesChart(fire.history || []));
     }
     appendListItem(card);
-  }
-
-  function renderSearchHits(list) {
-    els.sidebar.classList.remove("is-detail");
-    els.sidebar.setAttribute("aria-label", "Resultados de búsqueda");
-
-    const title = document.createElement("p");
-    title.className = "panel-title";
-    title.textContent = `${list.length} coincidencia${list.length === 1 ? "" : "s"}`;
-    appendListItem(title);
-
-    list.forEach((fire) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "hit-card";
-      btn.innerHTML = `
-        <span class="status-pill ${fire.statusClass}">${escapeHtml(fire.status)}</span>
-        <h3 class="hit-title">${escapeHtml(fire.municipality)}</h3>
-        <p class="hit-sub">${escapeHtml(displayProvince(fire.province))} · parte ${escapeHtml(formatRelativeParte(fire))}</p>
-      `;
-      btn.addEventListener("click", () => selectFire(fire.id, true));
-      appendListItem(btn);
-    });
   }
 
   function renderSatNationCard() {
@@ -1354,9 +1332,9 @@
     els.sidebar.classList.remove("is-detail");
     els.sidebar.setAttribute("aria-label", "Resumen por región");
 
-    const cylFires = list.filter((f) => f.source === "JCyL");
-    const gaFires = list.filter((f) => f.source === "incendios.gal");
-    const ptFires = list.filter((f) => f.source === "fogos.pt");
+    const cylFires = list.filter((f) => f.source === SOURCE.JCYL);
+    const gaFires = list.filter((f) => f.source === SOURCE.GALICIA);
+    const ptFires = list.filter((f) => f.source === SOURCE.FOGOS);
 
     const nation = document.createElement("p");
     nation.className = "panel-title";
@@ -1393,16 +1371,6 @@
       }
     }
 
-    if (query.trim()) {
-      if (!list.length) {
-        els.sidebar.classList.remove("is-detail");
-        els.list.innerHTML = '<li class="empty">Ninguna coincidencia. Prueba otro municipio o provincia.</li>';
-        return;
-      }
-      renderSearchHits(list);
-      return;
-    }
-
     renderRegionOverview(list);
   }
 
@@ -1423,9 +1391,9 @@
 
   function updateTicker() {
     const visible = filteredFires();
-    const cyl = visible.filter((f) => f.source === "JCyL").length;
-    const ga = visible.filter((f) => f.source === "incendios.gal").length;
-    const pt = visible.filter((f) => f.source === "fogos.pt").length;
+    const cyl = visible.filter((f) => f.source === SOURCE.JCYL).length;
+    const ga = visible.filter((f) => f.source === SOURCE.GALICIA).length;
+    const pt = visible.filter((f) => f.source === SOURCE.FOGOS).length;
     const firmsOn = !(els.layerFirms && !els.layerFirms.checked);
     const bits = [];
     if (firmsOn && firmsCount) bits.push(`${firmsCount} sat`);
@@ -1484,8 +1452,9 @@
       }
 
       const hashId = currentHash();
-      if (hashId === "about") setAboutOpen(true, { skipHash: true });
-      else if (hashId && fires.some((f) => f.id === hashId)) selectFire(hashId, true);
+      if (hashId === "about" || (hashId && fires.some((f) => f.id === hashId))) {
+        syncRouteFromHash();
+      }
 
       if (
         !fires.length &&
@@ -1624,7 +1593,7 @@
         els.btnLayers.classList.remove("is-active");
       }
     }
-    document.title = open ? "Sobre — fuegos.guaka.org" : "fuegos.guaka.org";
+    document.title = open ? TITLE_ABOUT : TITLE_HOME;
     if (!skipHash) {
       if (open && currentHash() !== "about") {
         history.pushState(null, "", "#about");
@@ -1727,13 +1696,6 @@
         }
       });
     }
-
-    els.search.addEventListener("input", () => {
-      query = els.search.value || "";
-      renderSidebar();
-      renderMarkers();
-      updateTicker();
-    });
 
     const bindCheck = (input, onChange) => {
       const sync = () => {
