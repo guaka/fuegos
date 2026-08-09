@@ -3,10 +3,10 @@
   "use strict";
 
   const FOCUS = {
-    center: [-5.5, 40.0],
-    zoom: 5.55,
-    // Oeste/norte–sur: Galicia → Andalucía (+ CyL / Extremadura)
-    bbox: [-9.4, 35.95, -0.6, 43.9],
+    center: [-3.5, 40.0],
+    zoom: 5.4,
+    // Península + Baleares (Canarias alcanzable al navegar)
+    bbox: [-9.5, 35.95, 4.45, 43.85],
   };
 
   /** Provinces with open live official partes (JCyL). */
@@ -40,6 +40,49 @@
       ],
     },
     {
+      title: "Madrid",
+      regions: [{ id: "madrid", name: "Madrid", kind: "sat", bbox: [-4.58, 39.88, -3.05, 41.17] }],
+    },
+    {
+      title: "Castilla-La Mancha",
+      regions: [
+        { id: "toledo", name: "Toledo", kind: "sat", bbox: [-5.45, 39.15, -2.95, 40.35] },
+        { id: "ciudad-real", name: "Ciudad Real", kind: "sat", bbox: [-5.05, 38.35, -2.6, 39.55] },
+        { id: "cuenca", name: "Cuenca", kind: "sat", bbox: [-3.15, 39.25, -1.35, 40.55] },
+        { id: "albacete", name: "Albacete", kind: "sat", bbox: [-2.85, 38.0, -0.85, 39.45] },
+        { id: "guadalajara", name: "Guadalajara", kind: "sat", bbox: [-3.55, 40.15, -1.65, 41.35] },
+      ],
+    },
+    {
+      title: "Aragón",
+      regions: [
+        { id: "huesca", name: "Huesca", kind: "sat", bbox: [-0.95, 41.75, 0.8, 42.95] },
+        { id: "zaragoza", name: "Zaragoza", kind: "sat", bbox: [-2.15, 41.05, -0.05, 42.75] },
+        { id: "teruel", name: "Teruel", kind: "sat", bbox: [-1.85, 39.85, -0.05, 41.35] },
+      ],
+    },
+    {
+      title: "Cataluña",
+      regions: [
+        { id: "lleida", name: "Lleida", kind: "sat", bbox: [0.15, 41.35, 1.55, 42.9] },
+        { id: "girona", name: "Girona", kind: "sat", bbox: [1.7, 41.65, 3.35, 42.5] },
+        { id: "barcelona", name: "Barcelona", kind: "sat", bbox: [1.35, 41.2, 2.8, 42.35] },
+        { id: "tarragona", name: "Tarragona", kind: "sat", bbox: [0.15, 40.5, 1.7, 41.55] },
+      ],
+    },
+    {
+      title: "Comunitat Valenciana",
+      regions: [
+        { id: "castellon", name: "Castellón", kind: "sat", bbox: [-0.55, 39.65, 0.7, 40.8] },
+        { id: "valencia", name: "Valencia", kind: "sat", bbox: [-1.55, 38.7, -0.05, 39.85] },
+        { id: "alicante", name: "Alicante", kind: "sat", bbox: [-1.15, 37.85, 0.3, 38.9] },
+      ],
+    },
+    {
+      title: "Región de Murcia",
+      regions: [{ id: "murcia", name: "Murcia", kind: "sat", bbox: [-2.35, 37.35, -0.65, 38.75] }],
+    },
+    {
       title: "Extremadura",
       regions: [
         { id: "caceres", name: "Cáceres", kind: "sat", bbox: [-7.55, 39.05, -4.72, 40.48] },
@@ -57,6 +100,31 @@
         { id: "jaen", name: "Jaén", kind: "sat", bbox: [-4.4, 37.35, -2.4, 38.55] },
         { id: "granada", name: "Granada", kind: "sat", bbox: [-4.35, 36.7, -2.05, 38.1] },
         { id: "almeria", name: "Almería", kind: "sat", bbox: [-3.15, 36.65, -1.55, 37.9] },
+      ],
+    },
+    {
+      title: "Illes Balears",
+      regions: [
+        { id: "baleares", name: "Illes Balears", kind: "sat", bbox: [1.15, 38.65, 4.35, 40.1] },
+      ],
+    },
+    {
+      title: "Canarias",
+      regions: [
+        {
+          id: "santa-cruz-tenerife",
+          name: "S.C. Tenerife",
+          kind: "sat",
+          bbox: [-18.2, 27.6, -15.85, 28.9],
+        },
+        { id: "las-palmas", name: "Las Palmas", kind: "sat", bbox: [-15.9, 27.6, -13.3, 29.5] },
+      ],
+    },
+    {
+      title: "Ciudades autónomas",
+      regions: [
+        { id: "ceuta", name: "Ceuta", kind: "sat", bbox: [-5.42, 35.86, -5.27, 35.92] },
+        { id: "melilla", name: "Melilla", kind: "sat", bbox: [-2.98, 35.26, -2.9, 35.33] },
       ],
     },
   ];
@@ -1071,7 +1139,7 @@
     const sat = document.createElement("p");
     sat.className = "overview-note";
     sat.innerHTML =
-      "Extremadura y Andalucía: sin parte diario abierto comparable — EFFIS en el mapa. Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a> (cidadán).";
+      "Otras CCAA: sin parte diario abierto comparable — EFFIS en el mapa. Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a> (cidadán).";
     appendListItem(sat);
 
     const pt = document.createElement("p");

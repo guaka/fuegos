@@ -1,6 +1,6 @@
 # Fuegos Vivos
 
-Mapa público de incendios en el **oeste y norte de España** (Galicia → Andalucía, cornisa y CyL), al estilo de [fogos.pt](https://fogos.pt).
+Mapa público de incendios en **toda España**, al estilo de [fogos.pt](https://fogos.pt).
 
 Sitio estático (`index.html` + `index.js`). Sin build. Licencia **AGPL-3.0**.
 
@@ -10,8 +10,7 @@ Resumen corto; detalle y comparación en **[DATA.md](./DATA.md)** (tablas de fue
 
 - **Oficiales en vivo:** [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL) — Castilla y León.
 - **Galicia:** avisos cidadáns [incendios.gal](https://incendios.gal/).
-- **Extremadura y Andalucía:** resumen por provincia + [EFFIS](https://forest-fire.emergency.copernicus.eu/) (sin parte diario abierto comparable).
-- **Norte (resto):** Asturias, Cantabria, País Vasco, Navarra, La Rioja vía EFFIS.
+- **Resto de CCAA:** resumen por provincia/comunidad + [EFFIS](https://forest-fire.emergency.copernicus.eu/) (sin parte diario abierto comparable).
 - **Portugal:** enlace a [fogos.pt](https://fogos.pt).
 
 La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas.

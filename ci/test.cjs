@@ -145,12 +145,10 @@ async function main() {
       "Regiones cubiertas",
       "Castilla y León",
       "Galicia",
-      "Extremadura",
-      "Andalucía",
-      "Cáceres",
-      "Badajoz",
-      "Sevilla",
-      "Granada",
+      "toda España",
+      "Cataluña",
+      "Canarias",
+      "Madrid",
       "incendios.gal",
       "coverage-map",
       "./about.js",
@@ -162,7 +160,7 @@ async function main() {
     assert.ok(js.includes("BBOX"));
     assert.ok(js.includes("maplibregl"));
     assert.ok(js.includes("fitBounds"));
-    assert.ok(js.includes("[-9.4, 35.95, -0.6, 43.9]"));
+    assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"));
   });
 
   test("HTML has core UI hooks", () => {
@@ -200,6 +198,11 @@ async function main() {
       "OFFICIAL_PROVINCES",
       "Extremadura",
       "Andalucía",
+      "Cataluña",
+      "Canarias",
+      "Madrid",
+      "Illes Balears",
+      "Melilla",
       "Badajoz",
       "Almería",
       "LEÓN",
@@ -217,7 +220,7 @@ async function main() {
     ]) {
       assert.ok(js.includes(needle), `missing ${needle}`);
     }
-    assert.ok(js.includes("[-9.4, 35.95, -0.6, 43.9]"), "default west Spain bbox");
+    assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"), "default Spain bbox");
     assert.ok(!js.includes("NORTH_REGIONS"), "renamed to REGION_SECTIONS");
     assert.ok(!js.includes("api-lb.fogos.pt"), "must not call fogos.pt API from the browser");
     assert.ok(!js.includes("fetchFogosPtFires"), "must not fetch fogos.pt fires");
@@ -367,17 +370,15 @@ async function main() {
     assert.ok(!isExtinguished({ fecha_extinguido: "09:59" })); // time-only junk
   });
 
-  test("focus bbox covers west Spain sample points", () => {
-    const bbox = [-9.4, 35.95, -0.6, 43.9];
+  test("focus bbox covers Spain sample points", () => {
+    const bbox = [-9.5, 35.95, 4.45, 43.85];
     assert.ok(inFocusBbox(42.88, -8.54, bbox)); // Santiago
-    assert.ok(inFocusBbox(43.36, -5.84, bbox)); // Oviedo
-    assert.ok(inFocusBbox(42.721508, -5.951445, bbox)); // León
-    assert.ok(inFocusBbox(39.48, -6.37, bbox)); // Cáceres
-    assert.ok(inFocusBbox(38.88, -6.97, bbox)); // Badajoz
+    assert.ok(inFocusBbox(40.42, -3.7, bbox)); // Madrid
+    assert.ok(inFocusBbox(41.39, 2.17, bbox)); // Barcelona
+    assert.ok(inFocusBbox(39.57, 2.65, bbox)); // Palma
     assert.ok(inFocusBbox(37.39, -5.99, bbox)); // Sevilla
-    assert.ok(inFocusBbox(36.72, -4.42, bbox)); // Málaga
-    assert.ok(inFocusBbox(37.18, -3.6, bbox)); // Granada
-    assert.ok(!inFocusBbox(28.1, -15.4, bbox)); // Canarias
+    assert.ok(inFocusBbox(39.48, -6.37, bbox)); // Cáceres
+    assert.ok(!inFocusBbox(28.1, -15.4, bbox)); // Canarias — fuera de la vista por defecto
   });
 
   await testAsync("JCyL API responds", async () => {
