@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "name": "fuegos",
+  "scripts": {
+    "test": "node ci/test.cjs",
+    "test:fires": "node ci/test-fires.cjs",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

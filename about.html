@@ -14,7 +14,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
   <style>
     :root {
       --orange: #ff6e02;
@@ -118,9 +117,9 @@
 
     .grid {
       display: grid;
-      grid-template-columns: 1.05fr 1fr;
+      grid-template-columns: 1fr;
       gap: 1.25rem;
-      align-items: stretch;
+      max-width: 40rem;
     }
 
     .panel {
@@ -166,63 +165,6 @@
     .badge.pt { background: var(--pt); color: #fff; }
     .badge.sat { background: #444; color: #fff; }
 
-    .map-card {
-      background: var(--card);
-      border-radius: 0.75rem;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
-      display: flex;
-      flex-direction: column;
-      min-height: 420px;
-      animation: rise 0.55s ease both 0.12s;
-    }
-    .map-card header {
-      padding: 0.85rem 1rem;
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-    }
-    .map-card header h2 {
-      margin: 0;
-      font-family: var(--font-display);
-      font-size: 1.05rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--orange);
-    }
-    .map-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.55rem 0.85rem;
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: var(--ink-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
-    .map-legend span {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-    .swatch {
-      width: 0.75rem;
-      height: 0.75rem;
-      border-radius: 2px;
-      display: inline-block;
-    }
-    .swatch.area { background: rgba(255, 110, 2, 0.35); border: 1px solid var(--orange); }
-    .swatch.es { background: var(--es); border-radius: 50%; }
-    .swatch.pt { background: var(--pt); border-radius: 50%; }
-
-    #coverage-map {
-      flex: 1;
-      min-height: 360px;
-      width: 100%;
-    }
 
     .sources {
       background: var(--card);
@@ -288,9 +230,7 @@
     }
 
     @media (max-width: 860px) {
-      .grid { grid-template-columns: 1fr; }
-      .map-card { min-height: 360px; }
-      #coverage-map { min-height: 300px; }
+      main { padding: 1.15rem 1rem 2.5rem; }
     }
   </style>
 </head>
@@ -353,17 +293,6 @@
         </ul>
       </section>
 
-      <section class="map-card" aria-labelledby="map-title">
-        <header>
-          <h2 id="map-title">Ámbito geográfico</h2>
-          <div class="map-legend" aria-hidden="true">
-            <span><i class="swatch area"></i> Zona de interés</span>
-            <span><i class="swatch es"></i> ES</span>
-            <span><i class="swatch pt"></i> PT</span>
-          </div>
-        </header>
-        <div id="coverage-map" role="img" aria-label="Mapa de la zona cubierta por Fuegos Vivos"></div>
-      </section>
     </div>
 
     <section class="sources">
@@ -408,7 +337,5 @@
     </div>
   </main>
 
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="./about.js" defer></script>
 </body>
 </html>

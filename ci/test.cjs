@@ -8,6 +8,8 @@
 const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
+const FF = require("../lib/fires.js");
+const { runFireTests } = require("./test-fires.cjs");
 
 const root = path.resolve(__dirname, "..");
 let passed = 0;
@@ -38,51 +40,11 @@ async function testAsync(name, fn) {
 }
 
 function parseResources(text) {
-  const out = { man: 0, terrain: 0, aerial: 0 };
-  if (!text) return out;
-  const parts = String(text).split(";").map((p) => p.trim()).filter(Boolean);
-  for (const part of parts) {
-    const m = part.match(/^(\d+)\s+(.+)$/i);
-    if (!m) continue;
-    const n = Number(m[1]) || 0;
-    const label = m[2].toUpperCase();
-    if (
-      /HT-|HK-|AA-|HELI|AVION|AVI[OÓ]N|MEDIO\s*A[EÉ]REO|BRIF\s*A[EÉ]RE/.test(label) ||
-      /^AA\b/.test(label) ||
-      /^HT\b/.test(label) ||
-      /^HK\b/.test(label)
-    ) {
-      out.aerial += n;
-    } else if (/AUTOBOMBA|BULDOZER|BULLDOZER|CAMI[OÓ]N|TERRESTRE|VEH[IÍ]CULO|NODRIZA/.test(label)) {
-      out.terrain += n;
-    } else if (
-      /A\.?\s*M\.?|ELIF|CUADRILLA|T[EÉ]CNICO|BRIF|BOMBERO|OPERATIVO|PERSONAL|CONVOY/.test(label)
-    ) {
-      out.man += n;
-    } else {
-      out.man += n;
-    }
-  }
-  return out;
-}
-
-function normalizeStatusKey(status) {
-  return String(status || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+  return FF.parseResources(text);
 }
 
 function statusClass(status) {
-  const s = normalizeStatusKey(status);
-  if (s === "activo" || s === "em curso" || s === "chegada ao to" || s.startsWith("despacho")) {
-    return "activo";
-  }
-  if (s === "controlado" || s === "em resolucao") return "controlado";
-  if (s === "estabilizado" || s === "vigilancia") return "estabilizado";
-  if (s === "conclusao" || s === "encerrada") return "conclusao";
-  return "otro";
+  return FF.statusClass(status);
 }
 
 function inFocusBbox(lat, lng, bbox) {
@@ -116,7 +78,7 @@ function markerSizeClass(fire) {
 }
 
 function isExtinguished(row) {
-  return /^\d{4}-\d{2}-\d{2}/.test(String(row.fecha_extinguido || "").trim());
+  return FF.isExtinguished(row);
 }
 
 function read(file) {
@@ -125,21 +87,22 @@ function read(file) {
 
 async function main() {
   test("required files exist", () => {
-    for (const f of ["index.html", "index.js", "about.html", "about.js", "favicon.svg", "LICENSE", "README.md", "DATA.md", ".nojekyll"]) {
+    for (const f of ["index.html", "index.js", "about.html", "favicon.svg", "LICENSE", "README.md", "DATA.md", ".nojekyll", "lib/fires.js"]) {
       assert.ok(fs.existsSync(path.join(root, f)), missing(f));
     }
+    assert.ok(!fs.existsSync(path.join(root, "about.js")), "about.js removed with coverage map");
   });
 
   test("index.js is valid JavaScript", () => {
     require("child_process").execFileSync(process.execPath, ["--check", path.join(root, "index.js")], {
       stdio: "pipe",
     });
-    require("child_process").execFileSync(process.execPath, ["--check", path.join(root, "about.js")], {
+    require("child_process").execFileSync(process.execPath, ["--check", path.join(root, "lib/fires.js")], {
       stdio: "pipe",
     });
   });
 
-  test("about page describes coverage and map", () => {
+  test("about page describes coverage without map", () => {
     const html = read("about.html");
     for (const needle of [
       "Regiones cubiertas",
@@ -150,17 +113,14 @@ async function main() {
       "Canarias",
       "Madrid",
       "incendios.gal",
-      "coverage-map",
-      "./about.js",
       "fogos.pt",
+      "software experimental de aficionado",
     ]) {
       assert.ok(html.includes(needle), `missing ${needle}`);
     }
-    const js = read("about.js");
-    assert.ok(js.includes("BBOX"));
-    assert.ok(js.includes("maplibregl"));
-    assert.ok(js.includes("fitBounds"));
-    assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"));
+    assert.ok(!html.includes("coverage-map"));
+    assert.ok(!html.includes("about.js"));
+    assert.ok(!html.includes("maplibre-gl"));
   });
 
   test("HTML has core UI hooks", () => {
@@ -189,15 +149,15 @@ async function main() {
 
   test("index.js wires ES + Galicia + EFFIS sources (no fogos.pt API)", () => {
     const js = read("index.js");
+    const html = read("index.html");
+    const lib = read("lib/fires.js");
     for (const needle of [
       "analisis.datosabiertos.jcyl.es",
       "incendios.gal/api/incidencias",
       "maps.effis.emergency.copernicus.eu",
-      "parseResources",
       "fetchJcylFires",
       "fetchGaliciaFires",
       "REGION_SECTIONS",
-      "OFFICIAL_PROVINCES",
       "Extremadura",
       "Andalucía",
       "Cataluña",
@@ -208,21 +168,25 @@ async function main() {
       "Resto de España",
       "is-sat",
       "flyToBbox",
-      "LEÓN",
-      "SALAMANCA",
       "maplibregl",
       "isStyleLoaded",
       "markerSizeClass",
       "seriousnessScore",
-      "isExtinguished",
-      "fecha_extinguido is null",
       "HISTORY_LOOKBACK_DAYS",
-      "mergeHistory",
       "buildResourcesChart",
-      "PARTE_LOOKBACK_DAYS",
+      "reduceJcylRows",
+      "filterGaliciaRows",
     ]) {
       assert.ok(js.includes(needle), `missing ${needle}`);
     }
+    assert.ok(html.includes("./lib/fires.js"));
+    assert.ok(lib.includes("OFFICIAL_PROVINCES"));
+    assert.ok(lib.includes("LEÓN"));
+    assert.ok(lib.includes("fecha_extinguido is null"));
+    assert.ok(lib.includes("PARTE_LOOKBACK_DAYS"));
+    assert.ok(lib.includes("function mergeHistory"));
+    assert.ok(js.includes("reduceJcylRows(rows)"));
+    assert.ok(js.includes("filterGaliciaRows(rows)"));
     assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"), "default Spain bbox");
     assert.ok(!js.includes("NORTH_REGIONS"), "renamed to REGION_SECTIONS");
     assert.ok(!js.includes("is-empty"), "sat cards must stay clickable (not is-empty)");
@@ -327,12 +291,17 @@ async function main() {
     assert.ok(js.includes("disableRotation"));
     assert.ok(js.includes("bearing: 0"));
     const html = read("index.html");
-    assert.ok(html.includes('id="btn-recenter"'));
-    assert.ok(/Centrar/.test(html));
     assert.ok(html.includes('id="btn-locate"'));
+    assert.ok(html.includes('class="map-locate"'));
+    assert.ok(/map-wrap[\s\S]*id="btn-locate"/.test(html), "locate control must sit on the map");
+    const topActions = html.match(/<div class="top-actions">[\s\S]*?<\/div>/);
+    assert.ok(topActions, "top-actions present");
+    assert.ok(!topActions[0].includes("btn-locate"), "locate must not be in the header");
     assert.ok(js.includes("locateMe"));
     assert.ok(js.includes("navigator.geolocation"));
     assert.ok(js.includes("user-location"));
+    assert.ok(!html.includes('id="btn-recenter"'));
+    assert.ok(!html.includes('id="btn-toggle-list"'));
   });
 
   test("relief hillshade layer is wired", () => {
@@ -346,16 +315,7 @@ async function main() {
   });
 
   test("mergeHistory sorts and dedupes parte snapshots", () => {
-    // Mirror of index.js mergeHistory for unit coverage
-    function mergeHistory(points) {
-      const byT = new Map();
-      for (const p of points) {
-        if (!p || !p.t) continue;
-        byT.set(p.t, p);
-      }
-      return Array.from(byT.values()).sort((a, b) => a.t - b.t);
-    }
-    const out = mergeHistory([
+    const out = FF.mergeHistory([
       { t: 300, man: 3 },
       { t: 100, man: 1 },
       { t: 300, man: 9 },
@@ -410,7 +370,7 @@ async function main() {
   });
 
   await testAsync("incendios.gal API responds", async () => {
-    const res = await fetch("https://incendios.gal/api/incidencias?data=30d", {
+    const res = await fetch("https://incendios.gal/api/incidencias", {
       headers: { Accept: "application/json" },
     });
     assert.strictEqual(res.status, 200);
@@ -435,6 +395,8 @@ async function main() {
     assert.strictEqual(buf[0], 0x89);
     assert.strictEqual(buf.toString("ascii", 1, 4), "PNG");
   });
+
+  await runFireTests(test, testAsync);
 
   console.log("");
   console.log(`${passed} passed, ${failed} failed`);

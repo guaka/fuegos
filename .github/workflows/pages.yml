@@ -26,8 +26,9 @@ jobs:
       - name: Stage site
         run: |
           set -euo pipefail
-          mkdir -p _site
-          cp index.html index.js about.html about.js favicon.svg LICENSE README.md _site/
+          mkdir -p _site/lib
+          cp index.html index.js about.html favicon.svg LICENSE README.md _site/
+          cp lib/fires.js _site/lib/
           touch _site/.nojekyll
 
       - name: Upload Pages artifact

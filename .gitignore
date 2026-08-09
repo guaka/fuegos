@@ -1,7 +1,12 @@
 # Dependencies / local tooling
+node_modules/
 worker/node_modules/
 worker/.wrangler/
 **/node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 
 # OS / editor
 .DS_Store

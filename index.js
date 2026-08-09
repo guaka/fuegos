@@ -2,6 +2,13 @@
 (function () {
   "use strict";
 
+  const FF = globalThis.FuegosFires;
+  if (!FF) {
+    document.body.innerHTML =
+      "<p style='padding:2rem;font-family:sans-serif'>Falta lib/fires.js — recarga o revisa el deploy.</p>";
+    return;
+  }
+
   const FOCUS = {
     center: [-3.5, 40.0],
     zoom: 5.4,
@@ -9,24 +16,20 @@
     bbox: [-9.5, 35.95, 4.45, 43.85],
   };
 
-  /** Provinces with open live official partes (JCyL). */
-  const OFFICIAL_PROVINCES = new Set([
-    "LEÓN",
-    "SALAMANCA",
-    "ZAMORA",
-    "ÁVILA",
-    "AVILA",
-    "VALLADOLID",
-    "PALENCIA",
-    "BURGOS",
-    "SEGOVIA",
-    "SORIA",
-  ]);
+  const {
+    HISTORY_LOOKBACK_DAYS,
+    reduceJcylRows,
+    filterGaliciaRows,
+    jcylWhereClause,
+    isoDate,
+    daysAgo,
+    compareFires,
+  } = FF;
 
   /**
    * Sidebar region sections. kind "galicia" uses incendios.gal; "sat" is EFFIS fly-to.
    * Sat-only CCAA are one card each (province-level cards looked dead with no live feed).
-   * Keep in sync with about.js coverage narrative.
+   * Keep in sync with about.html coverage narrative.
    */
   const REGION_SECTIONS = [
     {
@@ -59,19 +62,6 @@
     },
   ];
 
-  const ACTIVE_STATUSES = new Set(["ACTIVO", "CONTROLADO", "ESTABILIZADO"]);
-  /** Only keep fires with a recent official parte (ongoing bulletin, not archive). */
-  const PARTE_LOOKBACK_DAYS = 3;
-  /** Fetch older CyL partes so the detail chart can show medios over time. */
-  const HISTORY_LOOKBACK_DAYS = 14;
-  const GALICIA_LOOKBACK_DAYS = 30;
-  const GALICIA_FIRE_TIPOS = new Set([
-    "lume-visible",
-    "fume",
-    "zona-queimada",
-    "presenza-de-medios-de-emerxencia",
-    "afectacion-a-poboacion",
-  ]);
   const REFRESH_MS = 5 * 60 * 1000;
   const JCYL_URL =
     "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records";
@@ -118,16 +108,6 @@
   let userMarker = null;
   let query = "";
 
-  function isoDate(d) {
-    return d.toISOString().slice(0, 10);
-  }
-
-  function daysAgo(n) {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() - n);
-    return d;
-  }
-
   function effisTileUrl(layer, withTime) {
     const params = new URLSearchParams({
       SERVICE: "WMS",
@@ -148,36 +128,6 @@
     return `${EFFIS_WMS}?${params.toString().replace("%7Bbbox-epsg-3857%7D", "{bbox-epsg-3857}")}`;
   }
 
-  function statusClass(status) {
-    const s = normalizeStatusKey(status);
-    if (
-      s === "activo" ||
-      s === "em curso" ||
-      s === "chegada ao to" ||
-      s.startsWith("despacho")
-    ) {
-      return "activo";
-    }
-    if (s === "controlado" || s === "em resolucao") return "controlado";
-    if (s === "estabilizado" || s === "vigilancia") return "estabilizado";
-    if (s === "conclusao" || s === "encerrada") return "conclusao";
-    return "otro";
-  }
-
-  function normalizeStatusKey(status) {
-    return String(status || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  }
-
-  function severityRank(fire) {
-    const order = { activo: 0, controlado: 1, estabilizado: 2, conclusao: 3, otro: 4 };
-    return order[fire.statusClass] ?? 9;
-  }
-
-  /** Parse hectares from JCyL surface text when present (e.g. "FORESTAL 12,5 HA"). */
   function parseHectares(surface) {
     const m = String(surface || "").match(/([\d]+(?:[.,]\d+)?)\s*ha\b/i);
     if (!m) return 0;
@@ -204,36 +154,6 @@
     return "size-sm";
   }
 
-  function provinceOf(raw) {
-    if (Array.isArray(raw) && raw.length) return String(raw[0]).toUpperCase();
-    if (typeof raw === "string") return raw.toUpperCase();
-    return "";
-  }
-
-  function fireKey(row) {
-    const mun = row.termino_municipal || "";
-    const start = `${row.fecha_de_inicio || ""}T${row.hora_de_inicio || ""}`;
-    const ine = row.codigo_ine || "";
-    return `${ine}|${mun}|${start}`;
-  }
-
-  function parteStamp(fire) {
-    const raw = fire.parteAt || fire.rawOrden || "";
-    const t = Date.parse(String(raw).replace(" ", "T"));
-    return Number.isFinite(t) ? t : 0;
-  }
-
-  /** True when JCyL recorded an extinguish date (YYYY-MM-DD). */
-  function isExtinguished(row) {
-    return /^\d{4}-\d{2}-\d{2}/.test(String(row.fecha_extinguido || "").trim());
-  }
-
-  function parseParteMs(fecha, hora) {
-    if (!fecha) return 0;
-    const t = Date.parse(`${fecha}T${(hora || "00:00").slice(0, 5)}`);
-    return Number.isFinite(t) ? t : 0;
-  }
-
   function recencyClass(fire) {
     const ageH = (Date.now() - (fire.parteMs || 0)) / 36e5;
     if (!fire.parteMs || ageH > 48) return "recency-stale";
@@ -251,92 +171,6 @@
     return days === 1 ? "hace 1 día" : `hace ${days} días`;
   }
 
-  /** Parse JCyL "medios_de_extincion" into fogos-like man / terrain / aerial counts. */
-  function parseResources(text) {
-    const out = { man: 0, terrain: 0, aerial: 0 };
-    if (!text) return out;
-    const parts = String(text).split(";").map((p) => p.trim()).filter(Boolean);
-    for (const part of parts) {
-      const m = part.match(/^(\d+)\s+(.+)$/i);
-      if (!m) continue;
-      const n = Number(m[1]) || 0;
-      const label = m[2].toUpperCase();
-      if (
-        /HT-|HK-|AA-|HELI|AVION|AVI[OÓ]N|MEDIO\s*A[EÉ]REO|BRIF\s*A[EÉ]RE/.test(label) ||
-        /^AA\b/.test(label) ||
-        /^HT\b/.test(label) ||
-        /^HK\b/.test(label)
-      ) {
-        out.aerial += n;
-      } else if (/AUTOBOMBA|BULDOZER|BULLDOZER|CAMI[OÓ]N|TERRESTRE|VEH[IÍ]CULO|NODRIZA/.test(label)) {
-        out.terrain += n;
-      } else if (
-        /A\.?\s*M\.?|ELIF|CUADRILLA|T[EÉ]CNICO|BRIF|BOMBERO|OPERATIVO|PERSONAL|CONVOY/.test(label)
-      ) {
-        out.man += n;
-      } else {
-        // Unknown numbered resource: count as ground crew-ish if not clearly gear.
-        out.man += n;
-      }
-    }
-    return out;
-  }
-
-  function shortMunicipality(name) {
-    if (!name) return "Sin municipio";
-    // "UTRERA (LA)(VALDESAMARIO)" → keep readable
-    return String(name).replace(/\s+/g, " ").trim();
-  }
-
-  function normalizeFire(row) {
-    const province = provinceOf(row.provincia);
-    const status = (row.situacion_actual || "").trim().toUpperCase();
-    const pos = row.posicion || {};
-    const resources = parseResources(row.medios_de_extincion);
-    const municipality = shortMunicipality(row.termino_municipal);
-    return {
-      id: `es:${fireKey(row)}`,
-      country: "ES",
-      source: "JCyL",
-      municipality,
-      province,
-      status,
-      statusClass: statusClass(status),
-      level: row.nivel || row.nivel_maximo_alcanzado || "—",
-      cause: row.causa_probable || "—",
-      surface: row.tipo_y_has_de_superficie_afectada || "—",
-      resourcesText: row.medios_de_extincion || "—",
-      man: resources.man,
-      terrain: resources.terrain,
-      aerial: resources.aerial,
-      started: [row.fecha_de_inicio, row.hora_de_inicio].filter(Boolean).join(" "),
-      parteAt: [row.fecha_del_parte, row.hora_del_parte].filter(Boolean).join(" "),
-      parteMs: parseParteMs(row.fecha_del_parte, row.hora_del_parte),
-      rawOrden: row.orden || "",
-      lat: typeof pos.lat === "number" ? pos.lat : null,
-      lng: typeof pos.lon === "number" ? pos.lon : null,
-      locationLine: [municipality, province].filter(Boolean).join(", "),
-      detailUrl: null,
-      history: [],
-    };
-  }
-
-  function isCandidateRow(row) {
-    const mun = (row.termino_municipal || "").trim().toUpperCase();
-    if (!mun || mun.startsWith("SIN INCID")) return false;
-    const status = (row.situacion_actual || "").trim().toUpperCase();
-    if (!ACTIVE_STATUSES.has(status)) return false;
-    if (isExtinguished(row)) return false;
-    if (!OFFICIAL_PROVINCES.has(provinceOf(row.provincia))) return false;
-    if (!row.posicion || typeof row.posicion.lat !== "number") return false;
-    return true;
-  }
-
-  function isCurrentFire(fire) {
-    const cutoff = Date.now() - PARTE_LOOKBACK_DAYS * 24 * 36e5;
-    return !!(fire.parteMs && fire.parteMs >= cutoff);
-  }
-
   async function fetchJcylPage(where, offset) {
     const params = new URLSearchParams({
       limit: "100",
@@ -349,22 +183,9 @@
     return res.json();
   }
 
-  function mergeHistory(points) {
-    const byT = new Map();
-    for (const p of points) {
-      if (!p || !p.t) continue;
-      byT.set(p.t, p);
-    }
-    return Array.from(byT.values()).sort((a, b) => a.t - b.t);
-  }
-
   async function fetchJcylFires() {
     const since = isoDate(daysAgo(HISTORY_LOOKBACK_DAYS));
-    const where =
-      `fecha_del_parte >= date'${since}'` +
-      ` and situacion_actual in ('ACTIVO','CONTROLADO','ESTABILIZADO')` +
-      ` and fecha_extinguido is null`;
-
+    const where = jcylWhereClause(since);
     const rows = [];
     let offset = 0;
     let total = Infinity;
@@ -376,81 +197,7 @@
       if (!batch.length) break;
       offset += batch.length;
     }
-
-    const byId = new Map();
-    for (const row of rows) {
-      if (!isCandidateRow(row)) continue;
-      const n = normalizeFire(row);
-      const snap = {
-        t: n.parteMs,
-        label: n.parteAt,
-        man: n.man,
-        terrain: n.terrain,
-        aerial: n.aerial,
-        status: n.status,
-      };
-      let g = byId.get(n.id);
-      if (!g) {
-        g = { fire: n, history: [] };
-        byId.set(n.id, g);
-      }
-      g.history.push(snap);
-      if ((n.parteMs || 0) >= (g.fire.parteMs || 0)) g.fire = n;
-    }
-
-    const list = [];
-    for (const g of byId.values()) {
-      if (!isCurrentFire(g.fire)) continue;
-      g.fire.history = mergeHistory(g.history);
-      list.push(g.fire);
-    }
-    list.sort(compareFires);
-    return list;
-  }
-
-  function galiciaStatus(slug, tipoNome) {
-    const map = {
-      "lume-visible": { status: "LUME VISIBLE", statusClass: "activo" },
-      fume: { status: "FUME", statusClass: "activo" },
-      "zona-queimada": { status: "ZONA QUEIMADA", statusClass: "estabilizado" },
-      "presenza-de-medios-de-emerxencia": { status: "MEDIOS", statusClass: "controlado" },
-      "afectacion-a-poboacion": { status: "AFECTACIÓN", statusClass: "activo" },
-    };
-    return map[slug] || { status: String(tipoNome || "AVISO").toUpperCase(), statusClass: "otro" };
-  }
-
-  function normalizeGalicia(row) {
-    const slug = row.tipo && row.tipo.slug ? row.tipo.slug : "";
-    const st = galiciaStatus(slug, row.tipo && row.tipo.nome);
-    const lat = Number(row.latitude);
-    const lng = Number(row.lonxitude);
-    const when = row.updated_at || row.created_at || "";
-    const parteMs = Date.parse(when) || 0;
-    const label = row.nome || (row.tipo && row.tipo.nome) || `Incidencia ${row.id}`;
-    return {
-      id: `ga:${row.id}`,
-      country: "ES",
-      source: "incendios.gal",
-      municipality: shortMunicipality(label),
-      province: "GALICIA",
-      status: st.status,
-      statusClass: st.statusClass,
-      level: "—",
-      cause: "Aviso cidadán",
-      surface: row.descricion || (row.tipo && row.tipo.nome) || "—",
-      resourcesText: "",
-      man: 0,
-      terrain: 0,
-      aerial: 0,
-      started: when ? when.slice(0, 16).replace("T", " ") : "—",
-      parteAt: when ? when.slice(0, 16).replace("T", " ") : "—",
-      parteMs,
-      rawOrden: "",
-      lat: Number.isFinite(lat) ? lat : null,
-      lng: Number.isFinite(lng) ? lng : null,
-      locationLine: `${label}, Galicia`,
-      detailUrl: row.id ? `https://incendios.gal/?id=${row.id}` : "https://incendios.gal/",
-    };
+    return reduceJcylRows(rows);
   }
 
   async function fetchGaliciaFires() {
@@ -461,32 +208,7 @@
     if (!res.ok) throw new Error(`incendios.gal HTTP ${res.status}`);
     const rows = await res.json();
     if (!Array.isArray(rows)) return [];
-    const cutoff = Date.now() - GALICIA_LOOKBACK_DAYS * 24 * 36e5;
-    return rows
-      .filter((row) => {
-        const slug = row.tipo && row.tipo.slug;
-        if (!GALICIA_FIRE_TIPOS.has(slug)) return false;
-        const lat = Number(row.latitude);
-        const lng = Number(row.lonxitude);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-        const t = Date.parse(row.updated_at || row.created_at || "");
-        if (t && t < cutoff) return false;
-        return true;
-      })
-      .map(normalizeGalicia)
-      .sort(compareFires);
-  }
-
-  function compareFires(a, b) {
-    const ra = severityRank(a);
-    const rb = severityRank(b);
-    if (ra !== rb) return ra - rb;
-    const ma = a.man + a.terrain + a.aerial;
-    const mb = b.man + b.terrain + b.aerial;
-    if (mb !== ma) return mb - ma;
-    const sa = a.parteMs || a._stamp || parteStamp(a);
-    const sb = b.parteMs || b._stamp || parteStamp(b);
-    return sb - sa;
+    return filterGaliciaRows(rows);
   }
 
   function initMap() {
@@ -1259,25 +981,29 @@
   }
 
   function wireUi() {
-    els.btnRecenter.addEventListener("click", () => {
-      map.easeTo({
-        center: FOCUS.center,
-        zoom: FOCUS.zoom,
-        bearing: 0,
-        pitch: 0,
-        essential: true,
+    if (els.btnRecenter) {
+      els.btnRecenter.addEventListener("click", () => {
+        map.easeTo({
+          center: FOCUS.center,
+          zoom: FOCUS.zoom,
+          bearing: 0,
+          pitch: 0,
+          essential: true,
+        });
+        selectFire(null, false);
       });
-      selectFire(null, false);
-    });
+    }
 
     if (els.btnLocate) {
       els.btnLocate.addEventListener("click", locateMe);
     }
 
-    els.btnToggleList.addEventListener("click", () => {
-      const hidden = els.sidebar.classList.contains("is-hidden");
-      showSidebar(hidden);
-    });
+    if (els.btnToggleList) {
+      els.btnToggleList.addEventListener("click", () => {
+        const hidden = els.sidebar.classList.contains("is-hidden");
+        showSidebar(hidden);
+      });
+    }
 
     els.btnLayers.addEventListener("click", () => {
       els.layersPanel.classList.toggle("collapsed");

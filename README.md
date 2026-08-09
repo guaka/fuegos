@@ -18,7 +18,7 @@ La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas.
 ## Páginas
 
 - [`index.html`](./index.html) — mapa en vivo
-- [`about.html`](./about.html) — cobertura geográfica (texto + mapa)
+- [`about.html`](./about.html) — cobertura geográfica y fuentes
 - [`DATA.md`](./DATA.md) — fuentes de datos (tablas)
 
 ```bash
@@ -40,10 +40,14 @@ No hay paso de build: se sirven `index.html` e `index.js` tal cual.
 ## CI
 
 ```bash
-node ci/test.cjs
+npm test          # unit + fixture + live API smoke (node ci/test.cjs)
+npm run test:e2e  # Playwright map e2e (mocked feeds)
+npm run test:all  # both
 ```
 
-GitHub Actions runs the same suite on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): file contracts, JS syntax, resource/status helpers, and smoke checks for JCyL and EFFIS.
+Shared filter logic lives in [`lib/fires.js`](./lib/fires.js) (used by the map and tests) so we do not silently drop CyL / Galicia points.
+
+GitHub Actions runs unit tests and Playwright on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ## Licencia
 

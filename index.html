@@ -502,6 +502,40 @@
     }
     #map { position: absolute; inset: 0; }
 
+    .map-locate {
+      position: absolute;
+      z-index: 3;
+      right: 10px;
+      bottom: 6.75rem;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: 0;
+      border-radius: 4px;
+      background: #fff;
+      color: #333;
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s ease, background 0.15s ease;
+    }
+    .map-locate:hover {
+      color: var(--orange);
+      background: #fff;
+    }
+    .map-locate:disabled {
+      opacity: 0.55;
+      cursor: wait;
+      color: var(--orange);
+    }
+    .map-locate svg {
+      width: 20px;
+      height: 20px;
+      display: block;
+    }
+
     .layers {
       position: absolute;
       top: 0.75rem;
@@ -706,10 +740,6 @@
     <p class="ticker" id="ticker">Cargando incendios…</p>
     <div class="top-actions">
       <a class="top-btn" href="./about.html">Sobre</a>
-      <a class="top-btn" href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a>
-      <button type="button" class="top-btn" id="btn-toggle-list">Panel</button>
-      <button type="button" class="top-btn" id="btn-locate" title="Centrar mapa en mi ubicación" aria-label="Centrar mapa en mi ubicación">Aquí</button>
-      <button type="button" class="top-btn" id="btn-recenter" title="Vista norte · centrar mapa" aria-label="Centrar mapa al norte">Centrar</button>
     </div>
   </header>
 
@@ -742,6 +772,20 @@
 
     <div class="map-wrap">
       <div id="map" role="application" aria-label="Mapa de incendios"></div>
+      <button
+        type="button"
+        class="map-locate"
+        id="btn-locate"
+        title="Mi ubicación"
+        aria-label="Centrar mapa en mi ubicación"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            fill="currentColor"
+            d="M12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4zm8.94 3A8.99 8.99 0 0 0 13 3.06V1h-2v2.06A8.99 8.99 0 0 0 3.06 11H1v2h2.06A8.99 8.99 0 0 0 11 20.94V23h2v-2.06A8.99 8.99 0 0 0 20.94 13H23v-2zM12 19a7 7 0 1 1 7-7 7 7 0 0 1-7 7z"
+          />
+        </svg>
+      </button>
       <div class="layers" id="layers-panel">
         <div class="layers-head">
           <span class="layers-title">Mapa</span>
@@ -768,6 +812,7 @@
   </svg>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="./lib/fires.js"></script>
   <script src="./index.js" defer></script>
 </body>
 </html>

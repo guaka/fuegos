@@ -1,0 +1,47 @@
+[
+  {
+    "id": 101,
+    "latitude": 42.88,
+    "lonxitude": -8.54,
+    "nome": "Santiago test",
+    "updated_at": "2026-08-08T12:00:00Z",
+    "created_at": "2026-08-08T11:00:00Z",
+    "descricion": "lume",
+    "tipo": { "slug": "lume-visible", "nome": "Lume visible" }
+  },
+  {
+    "id": 102,
+    "latitude": 42.5,
+    "lonxitude": -8.0,
+    "nome": "Fume test",
+    "updated_at": "2026-08-01T12:00:00Z",
+    "created_at": "2026-08-01T11:00:00Z",
+    "tipo": { "slug": "fume", "nome": "Fume" }
+  },
+  {
+    "id": 103,
+    "latitude": 42.2,
+    "lonxitude": -7.5,
+    "nome": "Old aviso",
+    "updated_at": "2026-06-01T12:00:00Z",
+    "created_at": "2026-06-01T11:00:00Z",
+    "tipo": { "slug": "lume-visible", "nome": "Lume visible" }
+  },
+  {
+    "id": 104,
+    "latitude": 42.1,
+    "lonxitude": -7.4,
+    "nome": "Solidarity",
+    "updated_at": "2026-08-08T12:00:00Z",
+    "created_at": "2026-08-08T11:00:00Z",
+    "tipo": { "slug": "solidariedade-cidada", "nome": "Solidariedade" }
+  },
+  {
+    "id": 105,
+    "latitude": null,
+    "lonxitude": -8.1,
+    "nome": "No coords",
+    "updated_at": "2026-08-08T12:00:00Z",
+    "tipo": { "slug": "lume-visible", "nome": "Lume visible" }
+  }
+]
