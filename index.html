@@ -31,7 +31,7 @@
       --font: "Source Sans 3", system-ui, sans-serif;
       --font-display: "Raleway", sans-serif;
       --status-activo: #b81e1f;
-      --status-controlado: #ff6e02;
+      --status-controlado: #d4893a;
       --status-estabilizado: #65c4ed;
       --status-conclusao: #bdbdbd;
       --status-otro: #bdbdbd;
@@ -702,6 +702,9 @@
         0 4px 14px rgba(0, 0, 0, 0.45);
       animation: marker-pulse 1.5s ease-in-out infinite;
     }
+    .fuegos-marker-wrap .map-marker.is-selected {
+      transform: scale(1.12);
+    }
     .user-location {
       position: relative;
       width: 18px;
@@ -765,10 +768,16 @@
     .fuegos-marker-wrap {
       background: transparent !important;
       border: none !important;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
     }
     .fuegos-marker-wrap .map-marker,
     .fuegos-marker-wrap .user-location {
-      transform: translate(-50%, -50%);
+      /* Avoid nested translate under Leaflet's own transform (breaks on Lockdown iOS). */
+      transform: none;
+      position: static;
     }
     .map-wrap.is-leaflet .leaflet-control-zoom {
       margin-bottom: 4.5rem;
@@ -942,8 +951,6 @@
         font-size: 0.76rem;
         min-height: 1.8rem;
       }
-        min-height: 1.7rem;
-      }
     }
 
     @media (max-width: 900px) and (max-height: 640px) {
@@ -961,9 +968,11 @@
       z-index: 25;
       overflow: auto;
       -webkit-overflow-scrolling: touch;
-      background: var(--bg);
       color: var(--ink);
-      padding: 1.5rem 1.25rem 3rem;
+      background:
+        radial-gradient(100% 70% at 0% 0%, rgba(255, 110, 2, 0.16), transparent 48%),
+        radial-gradient(80% 50% at 100% 8%, rgba(255, 81, 47, 0.1), transparent 45%),
+        linear-gradient(180deg, #fafafa 0%, #f0f0f0 55%, #ebebeb 100%);
     }
     html.is-about {
       overflow: auto;
@@ -973,113 +982,228 @@
     }
     html.is-about .about-view {
       display: block;
+      animation: about-in 0.45s ease both;
     }
     html.is-about .layout {
       visibility: hidden;
       pointer-events: none;
     }
+    @keyframes about-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .about-view-inner {
-      max-width: 1100px;
+      max-width: 42rem;
       margin: 0 auto;
-      display: grid;
-      gap: 1.25rem;
+      padding: 1.75rem 1.25rem 3.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2.25rem;
     }
     .about-hero {
-      background: var(--card);
-      border-radius: 0.75rem;
-      padding: 1.5rem 1.4rem 1.35rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
+      padding: 0.35rem 0 0.15rem;
+      animation: about-rise 0.55s ease both;
     }
-    .about-hero h1 {
-      margin: 0 0 0.5rem;
+    @keyframes about-rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .about-hero-brand {
+      margin: 0 0 0.85rem;
       font-family: var(--font-display);
       font-weight: 700;
-      font-size: clamp(1.75rem, 4vw, 2.25rem);
-      letter-spacing: 0.02em;
+      font-size: clamp(2rem, 7vw, 3rem);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      text-transform: none;
+      color: var(--ink);
+      text-wrap: balance;
+    }
+    .about-hero-brand span {
+      color: var(--orange-deep);
+    }
+    .about-hero-lead {
+      margin: 0;
+      max-width: 34ch;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: clamp(1.15rem, 3.2vw, 1.45rem);
+      line-height: 1.35;
+      color: var(--ink);
+      text-wrap: balance;
+    }
+    .about-hero-note {
+      margin: 1rem 0 0;
+      max-width: 42ch;
+      font-size: 1.02rem;
+      font-weight: 500;
+      line-height: 1.5;
+      color: var(--ink-muted);
+    }
+    .about-hero-actions {
+      margin-top: 1.35rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+    }
+    .about-cta {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.25rem;
+      padding: 0.4rem 0.95rem;
+      border-radius: 0.35rem;
+      border: 0;
+      background: linear-gradient(135deg, var(--orange-soft), var(--orange-deep));
+      color: #fff !important;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: filter 0.15s ease, transform 0.15s ease;
+    }
+    .about-cta:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+    .about-cta-ghost {
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--ink) !important;
+      border: 1px solid rgba(28, 25, 23, 0.16);
+    }
+    .about-cta-ghost:hover {
+      background: #fff;
+      filter: none;
+    }
+
+    .about-section {
+      animation: about-rise 0.6s ease both;
+      animation-delay: 0.08s;
+    }
+    .about-section + .about-section {
+      animation-delay: 0.14s;
+      padding-top: 0.35rem;
+      border-top: 1px solid rgba(28, 25, 23, 0.1);
+    }
+    .about-kicker {
+      margin: 0 0 0.45rem;
+      font-family: var(--font-display);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--orange-deep);
     }
-    .about-hero p {
-      margin: 0;
-      max-width: 58ch;
-      color: var(--ink-muted);
-      font-size: 1.05rem;
-      font-weight: 500;
-    }
-    .about-hero p + p {
-      margin-top: 0.85rem;
-    }
-    .about-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1.25rem;
-      max-width: 40rem;
-    }
-    .about-panel {
-      background: var(--card);
-      border-radius: 0.75rem;
-      padding: 1.25rem 1.2rem 1.3rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
-    }
-    .about-panel h2,
-    .about-sources h2 {
-      margin: 0 0 0.75rem;
+    .about-section h2 {
+      margin: 0 0 0.55rem;
       font-family: var(--font-display);
-      font-size: 1.05rem;
+      font-size: clamp(1.2rem, 3vw, 1.45rem);
       font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--orange);
+      letter-spacing: -0.01em;
+      color: var(--ink);
+      text-transform: none;
     }
-    .about-panel p,
-    .about-panel li,
-    .about-sources p {
-      color: var(--ink-muted);
-      font-size: 0.95rem;
+    .about-section > p {
+      margin: 0 0 1.1rem;
+      max-width: 48ch;
+      font-size: 0.98rem;
       font-weight: 500;
+      line-height: 1.5;
+      color: var(--ink-muted);
     }
-    .about-panel p { margin: 0 0 0.85rem; }
-    .about-panel ul {
+
+    .about-sources-list {
+      list-style: none;
       margin: 0;
-      padding-left: 1.15rem;
+      padding: 0;
       display: grid;
-      gap: 0.55rem;
+      gap: 0.85rem;
     }
-    .about-panel li strong { color: var(--ink); }
-    .about-badge {
-      display: inline-block;
-      font-size: 0.65rem;
+    .about-source {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.65rem 0.85rem;
+      align-items: start;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid rgba(28, 25, 23, 0.08);
+    }
+    .about-source:first-child { padding-top: 0.15rem; }
+    .about-source:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+    .about-source strong {
+      display: block;
+      font-size: 1rem;
       font-weight: 700;
-      letter-spacing: 0.04em;
-      border-radius: 3px;
-      padding: 0.12rem 0.35rem;
-      vertical-align: middle;
-      margin-right: 0.25rem;
+      color: var(--ink);
+      margin-bottom: 0.2rem;
+    }
+    .about-source p {
+      margin: 0;
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: 1.45;
+      color: var(--ink-muted);
+    }
+    .about-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.4rem;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      border-radius: 4px;
+      padding: 0.28rem 0.4rem;
+      line-height: 1;
     }
     .about-badge.es { background: var(--es); color: #fff; }
     .about-badge.pt { background: var(--pt); color: #fff; }
-    .about-badge.sat { background: #444; color: #fff; }
-    .about-sources {
-      background: var(--card);
-      border-radius: 0.75rem;
-      padding: 1.15rem 1.2rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    .about-badge.sat { background: #c2410c; color: #fff; }
+
+    .about-links {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.45rem;
     }
-    .about-sources p {
-      margin: 0 0 0.55rem;
+    .about-links a {
+      font-weight: 600;
+      text-underline-offset: 0.15em;
+    }
+    .about-links li {
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--ink-muted);
+      line-height: 1.4;
+    }
+
+    .about-hobby-warn {
+      margin: 1.15rem 0 0;
       font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--ink);
+      line-height: 1.45;
+      padding: 0.85rem 0.95rem;
+      border-left: 3px solid var(--orange);
+      background: rgba(255, 110, 2, 0.1);
     }
-    .about-sources p:last-child { margin-bottom: 0; }
+
     .about-foot {
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
-      gap: 0.55rem;
-      padding: 0.25rem 0 0.5rem;
+      gap: 0.65rem;
+      padding: 0.15rem 0 0.5rem;
       flex-wrap: wrap;
+      animation: about-rise 0.65s ease both;
+      animation-delay: 0.2s;
     }
     .about-foot-license {
-      font-size: 0.82rem;
+      font-size: 0.84rem;
       font-weight: 600;
       color: var(--ink-muted);
       text-decoration: none;
@@ -1106,20 +1230,25 @@
       height: 2.5rem;
       border-radius: 50%;
       color: var(--ink-muted);
+      border: 1px solid rgba(28, 25, 23, 0.12);
+      background: rgba(255, 255, 255, 0.45);
       transition: color 0.15s ease, background 0.15s ease, transform 0.15s ease;
     }
     .about-gh:hover {
       color: var(--ink);
-      background: rgba(0, 0, 0, 0.05);
+      background: #fff;
       transform: translateY(-1px);
     }
     .about-gh svg {
-      width: 1.35rem;
-      height: 1.35rem;
+      width: 1.25rem;
+      height: 1.25rem;
       fill: currentColor;
     }
     @media (max-width: 860px) {
-      .about-view { padding: 1.15rem 1rem 2.5rem; }
+      .about-view-inner {
+        padding: 1.25rem 1rem 3rem;
+        gap: 1.85rem;
+      }
     }
   </style>
 </head>
@@ -1200,71 +1329,70 @@
 
   <section id="about" class="about-view" aria-label="Sobre">
     <div class="about-view-inner">
-      <div class="about-hero">
-        <h1>Sobre Fuegos Vivos</h1>
-        <p>
-          Mapa público de incendios en <strong>toda España</strong>
-          (península, Baleares y Canarias) y Portugal.
+      <header class="about-hero">
+        <h1 class="about-hero-brand">fuegos.<span>guaka</span>.org</h1>
+        <p class="about-hero-lead">
+          Mapa público de incendios en toda España y Portugal.
         </p>
-        <p>
+        <p class="about-hero-note">
           <a href="https://fogos.pt" rel="noopener">fogos.pt</a> es genial —
           y en España faltaba algo parecido, así que montamos esto en un par de horas.
         </p>
-      </div>
+        <div class="about-hero-actions">
+          <a class="about-cta" id="about-to-map" href="./">Ver el mapa</a>
+          <a class="about-cta about-cta-ghost" href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">Código en GitHub</a>
+        </div>
+      </header>
 
-      <div class="about-grid">
-        <section class="about-panel" aria-labelledby="coverage-title">
-          <h2 id="coverage-title">De dónde salen los datos</h2>
-          <p>
-            La cobertura geográfica es nacional: satélite en toda España,
-            más partes y avisos donde hay feeds abiertos.
-          </p>
-          <ul>
-            <li>
-              <span class="about-badge sat">SAT</span>
-              <strong>NASA FIRMS (VIIRS)</strong> —
-              detecciones de calor de las últimas 24h en España.
-              No son partes de extinción; EFFIS queda como capa opcional de teselas.
-            </li>
-            <li>
-              <span class="about-badge es">ES</span>
-              <strong>Junta de Castilla y León</strong> —
-              partes oficiales en curso (datos abiertos JCyL).
-            </li>
-            <li>
-              <span class="about-badge es">ES</span>
-              <strong>incendios.gal</strong> —
-              avisos colaborativos en Galicia (no oficiales).
-            </li>
-            <li>
-              <span class="about-badge pt">PT</span>
-              <strong>fogos.pt</strong> —
-              despachos ANEPC en Portugal (vía proxy CORS).
-            </li>
-          </ul>
-        </section>
-      </div>
+      <section class="about-section" aria-labelledby="coverage-title">
+        <p class="about-kicker">Datos</p>
+        <h2 id="coverage-title">De dónde salen</h2>
+        <p>
+          Cobertura nacional por satélite, más partes y avisos donde hay feeds abiertos.
+        </p>
+        <ul class="about-sources-list">
+          <li class="about-source">
+            <span class="about-badge sat">SAT</span>
+            <div>
+              <strong>NASA FIRMS (VIIRS)</strong>
+              <p>Detecciones de calor de las últimas 24h en España. No son partes de extinción; EFFIS queda como capa opcional.</p>
+            </div>
+          </li>
+          <li class="about-source">
+            <span class="about-badge es">ES</span>
+            <div>
+              <strong>Junta de Castilla y León</strong>
+              <p>Partes oficiales en curso (datos abiertos JCyL).</p>
+            </div>
+          </li>
+          <li class="about-source">
+            <span class="about-badge es">ES</span>
+            <div>
+              <strong>incendios.gal</strong>
+              <p>Avisos colaborativos en Galicia (no oficiales).</p>
+            </div>
+          </li>
+          <li class="about-source">
+            <span class="about-badge pt">PT</span>
+            <div>
+              <strong>fogos.pt</strong>
+              <p>Despachos ANEPC en Portugal (vía proxy CORS).</p>
+            </div>
+          </li>
+        </ul>
+      </section>
 
-      <section class="about-sources">
-        <h2>Fuentes y licencia</h2>
-        <p>
-          Datos oficiales CyL:
-          <a href="https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/" rel="noopener">incendios-forestales</a>.
-          Galicia (cidadán):
-          <a href="https://incendios.gal/" rel="noopener">incendios.gal</a>.
-          Satélite:
-          <a href="https://forest-fire.emergency.copernicus.eu/" rel="noopener">EFFIS / Copernicus EMS</a>
-          y NASA FIRMS.
-          Portugal:
-          <a href="https://fogos.pt" rel="noopener">fogos.pt</a>.
-          EGIF/MITECO es histórico consolidado, no un feed diario usable aquí.
-          Inventario detallado:
-          <a href="https://github.com/guaka/fuegos/blob/main/DATA.md" rel="noopener">DATA.md</a>.
-        </p>
-        <p>
-          Las detecciones satélite no son despachos de extinción. El código es
-          <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>.
-        </p>
+      <section class="about-section" aria-labelledby="license-title">
+        <p class="about-kicker">Transparencia</p>
+        <h2 id="license-title">Fuentes y licencia</h2>
+        <ul class="about-links">
+          <li><a href="https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/" rel="noopener">JCyL incendios-forestales</a> — partes oficiales CyL</li>
+          <li><a href="https://incendios.gal/" rel="noopener">incendios.gal</a> — avisos cidadáns</li>
+          <li><a href="https://forest-fire.emergency.copernicus.eu/" rel="noopener">EFFIS / Copernicus</a> + NASA FIRMS — satélite</li>
+          <li><a href="https://fogos.pt" rel="noopener">fogos.pt</a> — despachos Portugal</li>
+          <li><a href="https://github.com/guaka/fuegos/blob/main/DATA.md" rel="noopener">DATA.md</a> — inventario detallado</li>
+          <li><a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a> — el código es software livre</li>
+        </ul>
         <p class="about-hobby-warn">
           <strong>Aviso:</strong> software experimental de aficionado. No es un servicio oficial
           de emergencias; no sustituye a 112 / Protección Civil. Los datos pueden estar

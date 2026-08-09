@@ -1,107 +1,15 @@
 // @ts-check
 const { test, expect } = require("@playwright/test");
-const fs = require("fs");
-const path = require("path");
-
-const fixtures = path.join(__dirname, "..", "fixtures");
-const jcylSample = JSON.parse(fs.readFileSync(path.join(fixtures, "jcyl-sample.json"), "utf8"));
-const gaSample = JSON.parse(fs.readFileSync(path.join(fixtures, "galicia-sample.json"), "utf8"));
-const fogosSample = JSON.parse(fs.readFileSync(path.join(fixtures, "fogos-sample.json"), "utf8"));
-
-/** Build a JCyL ODS-like page response from fixture rows (only "keepable" ones for live map). */
-function jcylApiBody() {
-  const today = new Date().toISOString().slice(0, 10);
-  const results = jcylSample.results
-    .filter((r) => {
-      const mun = (r.termino_municipal || "").toUpperCase();
-      if (mun.startsWith("SIN INCID")) return false;
-      if (r.fecha_extinguido) return false;
-      if (r.provincia === "MADRID") return false;
-      if (!r.posicion) return false;
-      if (mun === "OLD FIRE") return false;
-      return ["ACTIVO", "CONTROLADO", "ESTABILIZADO"].includes(r.situacion_actual);
-    })
-    .map((r) => ({
-      ...r,
-      fecha_del_parte: today,
-      hora_del_parte: "12:00",
-    }));
-  return { total_count: results.length, results };
-}
-
-function firmsGeo() {
-  return {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [-5.6, 41.5] },
-        properties: {
-          id: "firms:test:1",
-          confidence: "nominal",
-          frp: 12,
-          acq_date: "2026-08-09",
-          acq_time: "1200",
-          source: "FIRMS",
-        },
-      },
-      {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [-3.7, 40.4] },
-        properties: {
-          id: "firms:test:2",
-          confidence: "high",
-          frp: 40,
-          acq_date: "2026-08-09",
-          acq_time: "1210",
-          source: "FIRMS",
-        },
-      },
-    ],
-  };
-}
+const {
+  installApiMocks,
+  jcylApiBody,
+  fogosSample,
+  firmsGeo,
+} = require("./helpers.cjs");
 
 test.describe("Fuegos Vivos map e2e", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route("**/analisis.datosabiertos.jcyl.es/**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(jcylApiBody()),
-      });
-    });
-    await page.route("**/incendios.gal/api/incidencias**", async (route) => {
-      const todayIso = new Date().toISOString();
-      const rows = gaSample
-        .filter((r) => r.id === 101 || r.id === 102)
-        .map((r) => ({ ...r, updated_at: todayIso, created_at: todayIso }));
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        headers: { "access-control-allow-origin": "*" },
-        body: JSON.stringify(rows),
-      });
-    });
-    await page.route("**/fuegos-proxy.crew.workers.dev/fires**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        headers: { "access-control-allow-origin": "*" },
-        body: JSON.stringify(fogosSample),
-      });
-    });
-    await page.route("**/fuegos-proxy.crew.workers.dev/firms**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/geo+json",
-        headers: { "access-control-allow-origin": "*" },
-        body: JSON.stringify(firmsGeo()),
-      });
-    });
-    // Soft-fail remote tiles so map still boots offline-ish
-    await page.route("**/basemaps.cartocdn.com/**", (route) => route.abort());
-    await page.route("**/elevation-tiles-prod/**", (route) => route.abort());
-    await page.route("**/maps.effis.emergency.copernicus.eu/**", (route) => route.abort());
+    await installApiMocks(page);
   });
 
   test("loads lib/fires and shows CyL + Galicia + Portugal markers", async ({ page }) => {
@@ -129,7 +37,7 @@ test.describe("Fuegos Vivos map e2e", () => {
     await expect(page.locator(".panel-title").first()).toContainText(/Toda España/i, {
       timeout: 30_000,
     });
-    await expect(page.locator(".region-card.is-firms")).toContainText(/2/);
+    await expect(page.locator(".region-card.is-firms")).toContainText(String(firmsGeo().features.length));
     await expect(page.locator(".panel-title").nth(1)).toContainText(/Castilla y León/i);
     await expect(page.getByText("Portugal · fogos.pt")).toBeVisible();
   });

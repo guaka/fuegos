@@ -35,7 +35,7 @@
 
   const SITE_HOST = "fuegos.guaka.org";
   const TITLE_HOME = SITE_HOST;
-  const TITLE_ABOUT = `Sobre — ${SITE_HOST}`;
+  const TITLE_ABOUT = `Sobre ${SITE_HOST}`;
 
   const REFRESH_MS = 5 * 60 * 1000;
   const JCYL_URL =
@@ -230,6 +230,8 @@
   }
 
   function canUseMapLibre() {
+    // E2E / manual: simulate Lockdown Mode (no WebGL) → Leaflet fallback.
+    if (globalThis.__FUEGOS_FORCE_LEAFLET === true) return false;
     if (!isWebglUsable()) return false;
     if (typeof maplibregl === "undefined") return false;
     try {
@@ -324,8 +326,18 @@
       return;
     }
     // Leaflet: place the point in the center of the unpadded (visible) area.
+    try {
+      map.invalidateSize({ animate: false, pan: false });
+    } catch {
+      /* ignore */
+    }
     const target = L.latLng(lat, lng);
     const size = map.getSize();
+    if (!size.x || !size.y) {
+      map.setView(target, Math.round(z));
+      scheduleLeafletResize();
+      return;
+    }
     const point = map.project(target, z);
     const cx = (pad.left + (size.x - pad.right)) / 2;
     const cy = (pad.top + (size.y - pad.bottom)) / 2;
@@ -420,13 +432,14 @@
     if (mapKind === "gl") {
       return new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map);
     }
+    // Fixed icon box + centered child — nested CSS translate breaks on some iOS/Leaflet builds.
     const icon = L.divIcon({
       className: "fuegos-marker-wrap",
       html: "",
-      iconSize: [0, 0],
-      iconAnchor: [0, 0],
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
     });
-    const marker = L.marker([lat, lng], { icon, keyboard: false }).addTo(map);
+    const marker = L.marker([lat, lng], { icon, keyboard: false, riseOnHover: true }).addTo(map);
     const node = marker.getElement();
     if (node) {
       node.innerHTML = "";
@@ -434,6 +447,20 @@
     }
     marker._fuegosEl = el;
     return marker;
+  }
+
+  function scheduleLeafletResize() {
+    if (mapKind !== "leaflet" || !map) return;
+    const run = () => {
+      try {
+        map.invalidateSize({ animate: false, pan: false });
+      } catch {
+        /* ignore */
+      }
+    };
+    run();
+    requestAnimationFrame(run);
+    [50, 150, 400, 1000].forEach((ms) => window.setTimeout(run, ms));
   }
 
   function markerDom(marker) {
@@ -553,8 +580,9 @@
 
     map = L.map("map", {
       center: [FOCUS.center[1], FOCUS.center[0]],
-      zoom: FOCUS.zoom,
+      zoom: Math.round(FOCUS.zoom),
       zoomControl: false,
+      preferCanvas: true,
       maxBounds: [
         [26.8, -19.5],
         [44.6, 5.8],
@@ -566,10 +594,10 @@
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
     Llayers.street = L.tileLayer(STREET_TILE_TMPL, {
-        attribution: ATTR_OSM_CARTO,
-        maxZoom: 19,
-        subdomains: "abcd",
-      });
+      attribution: ATTR_OSM_CARTO,
+      maxZoom: 19,
+      subdomains: "abcd",
+    });
     Llayers.satellite = L.tileLayer(SAT_TILES[0], {
       attribution: "Esri",
       maxZoom: 19,
@@ -609,25 +637,9 @@
     }
 
     setHeaderStatus("Mapa · sin WebGL");
-
-    requestAnimationFrame(() => {
-      try {
-        map.invalidateSize();
-      } catch {
-        /* ignore */
-      }
-    });
-    window.addEventListener(
-      "resize",
-      () => {
-        try {
-          map.invalidateSize();
-        } catch {
-          /* ignore */
-        }
-      },
-      { passive: true }
-    );
+    scheduleLeafletResize();
+    window.addEventListener("resize", scheduleLeafletResize, { passive: true });
+    window.addEventListener("orientationchange", scheduleLeafletResize, { passive: true });
   }
 
   function ensureFirmsLayers() {
@@ -739,6 +751,7 @@
         },
       }).addTo(firmsLeafletLayer);
       setFirmsVisibility(!!(els.layerFirms && els.layerFirms.checked));
+      scheduleLeafletResize();
       return;
     }
 
@@ -996,6 +1009,7 @@
         }
       }
     }
+    scheduleLeafletResize();
   }
 
   function appendListItem(node) {
@@ -1501,6 +1515,7 @@
       renderSidebar();
       renderMarkers();
       updateTicker();
+      scheduleLeafletResize();
       if (notes.length) {
         setHeaderStatus(`${els.ticker.textContent} · falló ${notes.join("/")}`);
       }
@@ -1537,11 +1552,13 @@
 
   function notifyMapResize() {
     if (!map) return;
+    if (mapKind === "leaflet") {
+      scheduleLeafletResize();
+      return;
+    }
     requestAnimationFrame(() => {
       try {
-        if (mapKind === "leaflet" && typeof map.invalidateSize === "function") {
-          map.invalidateSize({ animate: false });
-        } else if (mapKind === "gl" && typeof map.resize === "function") {
+        if (mapKind === "gl" && typeof map.resize === "function") {
           map.resize();
         }
       } catch {
@@ -1748,6 +1765,14 @@
           e.preventDefault();
           setAboutOpen(false);
         }
+      });
+    }
+
+    const aboutToMap = document.getElementById("about-to-map");
+    if (aboutToMap) {
+      aboutToMap.addEventListener("click", (e) => {
+        e.preventDefault();
+        setAboutOpen(false);
       });
     }
 
