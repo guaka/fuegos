@@ -180,6 +180,8 @@ async function main() {
       "AGPL",
       "about.html",
       "favicon.svg",
+      "software experimental de aficionado",
+      "112",
     ]) {
       assert.ok(html.includes(needle), `missing ${needle}`);
     }
@@ -327,6 +329,10 @@ async function main() {
     const html = read("index.html");
     assert.ok(html.includes('id="btn-recenter"'));
     assert.ok(/Centrar/.test(html));
+    assert.ok(html.includes('id="btn-locate"'));
+    assert.ok(js.includes("locateMe"));
+    assert.ok(js.includes("navigator.geolocation"));
+    assert.ok(js.includes("user-location"));
   });
 
   test("relief hillshade layer is wired", () => {

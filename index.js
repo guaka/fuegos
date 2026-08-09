@@ -64,7 +64,7 @@
   const PARTE_LOOKBACK_DAYS = 3;
   /** Fetch older CyL partes so the detail chart can show medios over time. */
   const HISTORY_LOOKBACK_DAYS = 14;
-  const GALICIA_LOOKBACK_DAYS = 14;
+  const GALICIA_LOOKBACK_DAYS = 30;
   const GALICIA_FIRE_TIPOS = new Set([
     "lume-visible",
     "fume",
@@ -94,6 +94,7 @@
     ticker: document.getElementById("ticker"),
     search: document.getElementById("search"),
     btnToggleList: document.getElementById("btn-toggle-list"),
+    btnLocate: document.getElementById("btn-locate"),
     btnRecenter: document.getElementById("btn-recenter"),
     btnLayers: document.getElementById("btn-layers"),
     layersPanel: document.getElementById("layers-panel"),
@@ -113,6 +114,8 @@
   let selectedId = null;
   /** @type {Map<string, maplibregl.Marker>} */
   const markers = new Map();
+  /** @type {maplibregl.Marker|null} */
+  let userMarker = null;
   let query = "";
 
   function isoDate(d) {
@@ -451,7 +454,8 @@
   }
 
   async function fetchGaliciaFires() {
-    const res = await fetch(`${GALICIA_URL}?data=30d`, {
+    // Do not use ?data=30d — that param currently returns ~1 row; full list + client filter.
+    const res = await fetch(GALICIA_URL, {
       headers: { Accept: "application/json" },
     });
     if (!res.ok) throw new Error(`incendios.gal HTTP ${res.status}`);
@@ -1119,18 +1123,16 @@
 
   function updateTicker() {
     const visible = filteredFires();
+    const cyl = visible.filter((f) => f.source === "JCyL").length;
+    const ga = visible.filter((f) => f.source === "incendios.gal").length;
     const hot = visible.filter((f) => f.statusClass === "activo").length;
-    const man = visible.reduce((s, f) => s + f.man, 0);
-    const terrain = visible.reduce((s, f) => s + f.terrain, 0);
-    const aerial = visible.reduce((s, f) => s + f.aerial, 0);
-    const regions = regionStats(visible).length;
     const now = new Date();
     const hhmm = now.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
     els.ticker.textContent =
-      `${hhmm} — ${visible.length} en curso` +
-      `${regions ? ` · ${regions} provincia${regions === 1 ? "" : "s"}` : ""}` +
+      `${hhmm} — ${cyl} CyL` +
+      `${ga ? ` · ${ga} Galicia` : ""}` +
       `${hot ? ` · ${hot} activos` : ""}` +
-      ` · ${man} op. · ${terrain} terr. · ${aerial} aér.`;
+      ` · resto ES: capa Hotspots (no hay parte nacional)`;
   }
 
   function escapeHtml(value) {
@@ -1166,7 +1168,9 @@
       if (esResult.status === "rejected") notes.push("CyL falló");
       if (gaResult.status === "rejected") notes.push("Galicia falló");
       els.status.textContent =
-        `CyL ${esFires.length} · GA ${gaFires.length} · actualizado ${formatUpdated(new Date())}` +
+        `Puntos: CyL ${esFires.length} oficiales · Galicia ${gaFires.length} avisos. ` +
+        `Asturias/Madrid/etc. no tienen feed de partes en el mapa — usa Hotspots EFFIS. ` +
+        `Actualizado ${formatUpdated(new Date())}` +
         (notes.length ? ` · ${notes.join(", ")}` : "");
 
       if (selectedId && !fires.some((f) => f.id === selectedId)) selectedId = null;
@@ -1197,6 +1201,63 @@
     els.sidebar.classList.toggle("is-hidden", !show);
   }
 
+  function setUserLocation(lng, lat) {
+    if (!map) return;
+    if (!userMarker) {
+      const el = document.createElement("div");
+      el.className = "user-location";
+      el.setAttribute("aria-hidden", "true");
+      userMarker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map);
+    } else {
+      userMarker.setLngLat([lng, lat]);
+    }
+  }
+
+  function locateMe() {
+    if (!map) return;
+    if (!navigator.geolocation) {
+      els.status.textContent = "Tu navegador no permite geolocalización.";
+      return;
+    }
+    if (els.btnLocate) {
+      els.btnLocate.disabled = true;
+      els.btnLocate.setAttribute("aria-busy", "true");
+    }
+    els.status.textContent = "Obteniendo tu ubicación…";
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserLocation(lng, lat);
+        map.flyTo({
+          center: [lng, lat],
+          zoom: Math.max(map.getZoom(), 10),
+          bearing: 0,
+          pitch: 0,
+          essential: true,
+        });
+        els.status.textContent = "Mapa centrado en tu ubicación.";
+        if (els.btnLocate) {
+          els.btnLocate.disabled = false;
+          els.btnLocate.removeAttribute("aria-busy");
+        }
+      },
+      (err) => {
+        let msg = "No se pudo obtener tu ubicación.";
+        if (err && err.code === 1) msg = "Permiso de ubicación denegado.";
+        else if (err && err.code === 2) msg = "Ubicación no disponible.";
+        else if (err && err.code === 3) msg = "Tiempo de espera al obtener la ubicación.";
+        els.status.textContent = msg;
+        if (els.btnLocate) {
+          els.btnLocate.disabled = false;
+          els.btnLocate.removeAttribute("aria-busy");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
+  }
+
   function wireUi() {
     els.btnRecenter.addEventListener("click", () => {
       map.easeTo({
@@ -1208,6 +1269,10 @@
       });
       selectFire(null, false);
     });
+
+    if (els.btnLocate) {
+      els.btnLocate.addEventListener("click", locateMe);
+    }
 
     els.btnToggleList.addEventListener("click", () => {
       const hidden = els.sidebar.classList.contains("is-hidden");

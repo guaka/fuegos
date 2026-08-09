@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fuegos-proxy",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  // Optional custom domain later: routes / workers_dev
+  "workers_dev": true
+}
