@@ -9,6 +9,13 @@
     return;
   }
 
+  const I18n = globalThis.FuegosI18n;
+  if (!I18n) {
+    document.body.innerHTML =
+      "<p style='padding:2rem;font-family:sans-serif'>Falta lib/i18n.js — recarga o revisa el deploy.</p>";
+    return;
+  }
+
   const FOCUS = {
     center: [-3.5, 40.0],
     zoom: 5.4,
@@ -24,6 +31,8 @@
     filterFogosRows,
     filterBombersRows,
     filterInfocaRows,
+    filterInfocamRows,
+    filterAragonRows,
     jcylWhereClause,
     isoDate,
     daysAgo,
@@ -31,19 +40,26 @@
   } = FF;
 
   /**
-   * Sidebar: live CyL + Galicia + CAT + AND + PT + national FIRMS.
+   * Sidebar: live CyL + Galicia + CAT + AND + C-LM + Aragón + PT + national FIRMS.
    */
   const GALICIA_BBOX = [-9.35, 41.78, -6.7, 43.8];
   const CATALUNYA_BBOX = [0.05, 40.45, 3.35, 42.9];
   const ANDALUCIA_BBOX = [-7.55, 35.95, -1.55, 38.75];
+  const CLM_BBOX = [-5.55, 38.0, -0.75, 41.45];
+  const ARAGON_BBOX = [-2.25, 39.75, 0.85, 42.95];
 
   const SITE_HOST = "fuegos.guaka.org";
   const TITLE_HOME = SITE_HOST;
-  const TITLE_ABOUT = `Sobre ${SITE_HOST}`;
+  function aboutTitle() {
+    return I18n.t("title.about", { host: SITE_HOST });
+  }
 
   const REFRESH_MS = 5 * 60 * 1000;
   /** If the tab sat idle / backgrounded this long, refresh as soon as the user returns. */
   const IDLE_STALE_MS = 15 * 60 * 1000;
+  /** Show last known spots from localStorage while a fresh fetch runs. */
+  const SPOTS_CACHE_KEY = "fuegos.spots.v1";
+  const SPOTS_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
   const JCYL_URL =
     "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records";
   const GALICIA_URL = "https://incendios.gal/api/incidencias";
@@ -52,11 +68,15 @@
   const FOGOS_URL = `${PROXY_ORIGIN}/fires`;
   const BOMBERS_URL = `${PROXY_ORIGIN}/bombers`;
   const INFOCA_URL = `${PROXY_ORIGIN}/infoca`;
+  const INFOCAM_URL = `${PROXY_ORIGIN}/infocam`;
+  const ARAGON_URL = `${PROXY_ORIGIN}/aragon`;
   /** Same-origin snapshots from Pages build — used if workers.dev is blocked (Lockdown / blockers). */
   const FIRMS_FALLBACK_URL = "./data/firms.geojson";
   const FOGOS_FALLBACK_URL = "./data/fires.json";
   const BOMBERS_FALLBACK_URL = "./data/bombers.geojson";
   const INFOCA_FALLBACK_URL = "./data/infoca.geojson";
+  const INFOCAM_FALLBACK_URL = "./data/infocam.geojson";
+  const ARAGON_FALLBACK_URL = "./data/aragon.geojson";
   const EFFIS_WMS = "https://maps.effis.emergency.copernicus.eu/effis";
 
   const STREET_TILE_TMPL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png";
@@ -93,6 +113,8 @@
     layerGalicia: document.getElementById("layer-galicia"),
     layerCatalunya: document.getElementById("layer-catalunya"),
     layerAndalucia: document.getElementById("layer-andalucia"),
+    layerClm: document.getElementById("layer-clm"),
+    layerAragon: document.getElementById("layer-aragon"),
     layerPortugal: document.getElementById("layer-portugal"),
     layerFirms: document.getElementById("layer-firms"),
     layerHotspots: document.getElementById("layer-hotspots"),
@@ -188,10 +210,10 @@
     const ms = fire.parteMs || 0;
     if (!ms) return fire.parteAt || "—";
     const ageH = (Date.now() - ms) / 36e5;
-    if (ageH < 1) return "hace menos de 1 h";
-    if (ageH < 24) return `hace ${Math.round(ageH)} h`;
+    if (ageH < 1) return I18n.t("rel.lt1h");
+    if (ageH < 24) return I18n.t("rel.hours", { n: Math.round(ageH) });
     const days = Math.round(ageH / 24);
-    return days === 1 ? "hace 1 día" : `hace ${days} días`;
+    return days === 1 ? I18n.t("rel.day") : I18n.t("rel.days", { n: days });
   }
 
   async function fetchJcylPage(where, offset) {
@@ -780,6 +802,82 @@
     if (src && typeof src.setData === "function") src.setData(fc);
   }
 
+  function slimFireForCache(fire) {
+    if (!fire || typeof fire !== "object") return null;
+    const copy = { ...fire };
+    delete copy.history;
+    return copy;
+  }
+
+  function readSpotsCache() {
+    try {
+      const raw = localStorage.getItem(SPOTS_CACHE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== "object") return null;
+      const savedAt = Number(data.savedAt) || 0;
+      if (!savedAt || Date.now() - savedAt > SPOTS_CACHE_MAX_AGE_MS) return null;
+      const cachedFires = Array.isArray(data.fires) ? data.fires.filter(Boolean) : [];
+      const firms =
+        data.firms && data.firms.type === "FeatureCollection"
+          ? data.firms
+          : { type: "FeatureCollection", features: [] };
+      if (!cachedFires.length && !(firms.features && firms.features.length)) return null;
+      return { savedAt, fires: cachedFires, firms };
+    } catch {
+      return null;
+    }
+  }
+
+  function writeSpotsCache(nextFires, nextFirms) {
+    try {
+      localStorage.setItem(
+        SPOTS_CACHE_KEY,
+        JSON.stringify({
+          savedAt: Date.now(),
+          fires: (nextFires || []).map(slimFireForCache).filter(Boolean),
+          firms:
+            nextFirms && nextFirms.type === "FeatureCollection"
+              ? {
+                  type: "FeatureCollection",
+                  features: Array.isArray(nextFirms.features) ? nextFirms.features : [],
+                }
+              : { type: "FeatureCollection", features: [] },
+        })
+      );
+    } catch (err) {
+      try {
+        localStorage.setItem(
+          SPOTS_CACHE_KEY,
+          JSON.stringify({
+            savedAt: Date.now(),
+            fires: (nextFires || []).map(slimFireForCache).filter(Boolean),
+            firms: { type: "FeatureCollection", features: [] },
+          })
+        );
+      } catch {
+        console.warn("spots cache write failed", err);
+      }
+    }
+  }
+
+  function hydrateFromCache() {
+    const cached = readSpotsCache();
+    if (!cached) return false;
+    fires = cached.fires.slice().sort(compareFires);
+    setFirmsData(cached.firms);
+    lastRefreshAt = cached.savedAt;
+    renderSidebar();
+    renderMarkers();
+    updateTicker();
+    scheduleLeafletResize();
+    const hashId = currentHash();
+    if (hashId === "about" || (hashId && fires.some((f) => f.id === hashId))) {
+      syncRouteFromHash();
+    }
+    return true;
+  }
+
   function flyToFirms() {
     if (!map) return;
     const feats = (firmsGeo.features || []).filter(
@@ -883,6 +981,16 @@
     return filterInfocaRows(payload);
   }
 
+  async function fetchInfocamFires() {
+    const payload = await fetchJsonWithFallback(INFOCAM_URL, INFOCAM_FALLBACK_URL, "INFOCAM", 18_000);
+    return filterInfocamRows(payload);
+  }
+
+  async function fetchAragonFires() {
+    const payload = await fetchJsonWithFallback(ARAGON_URL, ARAGON_FALLBACK_URL, "Aragón", 18_000);
+    return filterAragonRows(payload);
+  }
+
   function clearMarkers() {
     for (const m of markers.values()) {
       if (mapKind === "leaflet" && map) {
@@ -903,6 +1011,12 @@
     }
     if (fire.source === SOURCE.INFOCA) {
       return !!(els.layerAndalucia && els.layerAndalucia.checked);
+    }
+    if (fire.source === SOURCE.INFOCAM) {
+      return !!(els.layerClm && els.layerClm.checked);
+    }
+    if (fire.source === SOURCE.ARAGON) {
+      return !!(els.layerAragon && els.layerAragon.checked);
     }
     if (fire.source === SOURCE.FOGOS) {
       return !!(els.layerPortugal && els.layerPortugal.checked);
@@ -949,18 +1063,18 @@
 
   function assetBlock(fire) {
     return `
-      <div class="assets" aria-label="Medios">
-        <span class="asset" title="Operativos">
+      <div class="assets" aria-label="${escapeHtml(I18n.t("detail.assets"))}">
+        <span class="asset" title="${escapeHtml(I18n.t("detail.man"))}">
           <svg><use href="#ico-man"></use></svg>
-          <span><strong>${fire.man}</strong><br /><em>Operativos</em></span>
+          <span><strong>${fire.man}</strong><br /><em>${escapeHtml(I18n.t("detail.man"))}</em></span>
         </span>
-        <span class="asset" title="Terrestres">
+        <span class="asset" title="${escapeHtml(I18n.t("detail.terrain"))}">
           <svg><use href="#ico-truck"></use></svg>
-          <span><strong>${fire.terrain}</strong><br /><em>Terrestres</em></span>
+          <span><strong>${fire.terrain}</strong><br /><em>${escapeHtml(I18n.t("detail.terrain"))}</em></span>
         </span>
-        <span class="asset" title="Aéreos">
+        <span class="asset" title="${escapeHtml(I18n.t("detail.aerial"))}">
           <svg><use href="#ico-plane"></use></svg>
-          <span><strong>${fire.aerial}</strong><br /><em>Aéreos</em></span>
+          <span><strong>${fire.aerial}</strong><br /><em>${escapeHtml(I18n.t("detail.aerial"))}</em></span>
         </span>
       </div>
     `;
@@ -1016,7 +1130,10 @@
       g.fires.push(fire);
     }
     return Array.from(byProv.values()).sort(
-      (a, b) => b.activo - a.activo || b.total - a.total || a.province.localeCompare(b.province, "es")
+      (a, b) =>
+        b.activo - a.activo ||
+        b.total - a.total ||
+        a.province.localeCompare(b.province, "es")
     );
   }
 
@@ -1055,6 +1172,12 @@
         selectFire(fire.id, true);
       });
       const marker = createHtmlMarker(el, fire.lng, fire.lat);
+      if (mapKind === "leaflet" && marker && typeof marker.on === "function") {
+        marker.on("click", (ev) => {
+          L.DomEvent.stopPropagation(ev);
+          selectFire(fire.id, true);
+        });
+      }
       markers.set(fire.id, marker);
     });
 
@@ -1111,7 +1234,7 @@
     }
     yMax = Math.ceil(yMax * 1.15) || 1;
 
-    const xOf = (t) => pad.l + ((t - t0) / span) * iw;
+    const xOf = (tMs) => pad.l + ((tMs - t0) / span) * iw;
     const yOf = (v) => pad.t + ih - (v / yMax) * ih;
 
     const series = [
@@ -1170,17 +1293,37 @@
     return wrap;
   }
 
+  /** Province / place line without repeating the municipality title. */
+  function detailPlaceLine(fire) {
+    const loc = String(fire.locationLine || "").trim();
+    const muni = String(fire.municipality || "").trim();
+    if (!loc) return "";
+    if (!muni) return loc;
+    if (loc.localeCompare(muni, "es", { sensitivity: "accent" }) === 0) return "";
+    const escaped = muni.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`^${escaped}\\s*,\\s*`, "i");
+    if (re.test(loc)) return loc.replace(re, "").trim();
+    return loc;
+  }
+
+  function causeFieldLabel(fire) {
+    if (fire.source === SOURCE.GALICIA) return I18n.t("detail.origin");
+    if (fire.source === SOURCE.FOGOS) return I18n.t("detail.nature");
+    return I18n.t("detail.cause");
+  }
+
   function renderFireDetail(fire) {
     els.sidebar.classList.add("is-detail");
-    els.sidebar.setAttribute("aria-label", "Detalle del incendio");
+    els.sidebar.setAttribute("aria-label", I18n.t("sidebar.detail"));
 
     const back = document.createElement("button");
     back.type = "button";
     back.className = "detail-back";
-    back.textContent = "← Resumen por región";
+    back.textContent = I18n.t("detail.back");
     back.addEventListener("click", () => selectFire(null, false));
     appendListItem(back);
 
+    const place = detailPlaceLine(fire);
     const card = document.createElement("article");
     card.className = "card is-selected";
     card.innerHTML = `
@@ -1192,49 +1335,40 @@
           <span class="status-pill ${fire.statusClass}">${escapeHtml(fire.status)}</span>
         </div>
         <h3 class="card-title">${escapeHtml(fire.municipality)}</h3>
+        ${place ? `<p class="card-sub">${escapeHtml(place)}</p>` : ""}
         ${sourceCaveatHtml(fire)}
         <div class="fields">
-          <div>
-            <h6 class="field-label">Local</h6>
-            <p class="field-value">${escapeHtml(fire.locationLine)}</p>
-          </div>
-          <div>
-            <h6 class="field-label">Inicio</h6>
+          <div class="field">
+            <h6 class="field-label">${escapeHtml(I18n.t("detail.start"))}</h6>
             <p class="field-value">${escapeHtml(fire.started || "—")}</p>
           </div>
-          <div>
-            <h6 class="field-label">Último parte</h6>
+          <div class="field">
+            <h6 class="field-label">${escapeHtml(I18n.t("detail.parte"))}</h6>
             <p class="field-value">${escapeHtml(formatRelativeParte(fire))}</p>
           </div>
-          <div>
-            <h6 class="field-label">Superficie / naturaleza</h6>
+          <div class="field">
+            <h6 class="field-label">${escapeHtml(I18n.t("detail.surface"))}</h6>
             <p class="field-value">${escapeHtml(fire.surface)}</p>
           </div>
-          <div>
-            <h6 class="field-label">Nivel</h6>
+          <div class="field">
+            <h6 class="field-label">${escapeHtml(I18n.t("detail.level"))}</h6>
             <p class="field-value">${escapeHtml(String(fire.level ?? "—"))}</p>
           </div>
-          <div>
-            <h6 class="field-label">${
-              fire.source === SOURCE.GALICIA
-                ? "Origen"
-                : fire.source === SOURCE.FOGOS
-                  ? "Naturaleza"
-                  : "Causa probable"
-            }</h6>
+          <div class="field">
+            <h6 class="field-label">${escapeHtml(causeFieldLabel(fire))}</h6>
             <p class="field-value">${escapeHtml(String(fire.cause ?? "—"))}</p>
-          </div>
-          <div>
-            <h6 class="field-label">Fuente</h6>
-            <p class="field-value">${sourceLinkHtml(fire)}</p>
           </div>
         </div>
         ${fire.source === SOURCE.GALICIA ? "" : assetBlock(fire)}
+        <p class="detail-source">${escapeHtml(I18n.t("detail.source"))} · ${sourceLinkHtml(fire)}</p>
       </div>
     `;
     if (fire.source === SOURCE.JCYL) {
       const body = card.querySelector(".card-body");
-      if (body) body.appendChild(buildResourcesChart(fire.history || []));
+      const srcEl = body?.querySelector(".detail-source");
+      const chart = buildResourcesChart(fire.history || []);
+      if (body && srcEl) body.insertBefore(chart, srcEl);
+      else if (body) body.appendChild(chart);
     }
     appendListItem(card);
   }
@@ -1462,12 +1596,14 @@
 
   function renderRegionOverview(list) {
     els.sidebar.classList.remove("is-detail");
-    els.sidebar.setAttribute("aria-label", "Resumen por región");
+    els.sidebar.setAttribute("aria-label", I18n.t("sidebar.overview"));
 
     const cylFires = list.filter((f) => f.source === SOURCE.JCYL);
     const gaFires = list.filter((f) => f.source === SOURCE.GALICIA);
     const catFires = list.filter((f) => f.source === SOURCE.BOMBERS);
     const andFires = list.filter((f) => f.source === SOURCE.INFOCA);
+    const clmFires = list.filter((f) => f.source === SOURCE.INFOCAM);
+    const araFires = list.filter((f) => f.source === SOURCE.ARAGON);
     const ptFires = list.filter((f) => f.source === SOURCE.FOGOS);
 
     const nation = document.createElement("p");
@@ -1506,12 +1642,34 @@
       label: "Andalucía",
     });
 
+    renderRegionalSection({
+      title: "Castilla-La Mancha · INFOCAM",
+      fires: clmFires,
+      badgeKind: "oficial",
+      badgeLabel: "INFOCAM",
+      emptyText: "No hay partes INFOCAM abiertos ahora.",
+      layerEl: els.layerClm,
+      bbox: CLM_BBOX,
+      label: "C-LM",
+    });
+
+    renderRegionalSection({
+      title: "Aragón · CartoFor",
+      fires: araFires,
+      badgeKind: "oficial",
+      badgeLabel: "Aragón",
+      emptyText: "No hay incendios activos en el WFS de Aragón ahora.",
+      layerEl: els.layerAragon,
+      bbox: ARAGON_BBOX,
+      label: "Aragón",
+    });
+
     renderPortugalSection(ptFires);
 
     const sat = document.createElement("p");
     sat.className = "overview-note";
     sat.innerHTML =
-      "Cobertura regional: JCyL, Galicia, Bombers (CAT), INFOCA (AND), fogos.pt. Resto de España: <strong>FIRMS</strong> satélite. Próximo: FIDIAS (C-LM), 112CV.";
+      "Cobertura regional: JCyL, Galicia, Bombers (CAT), INFOCA (AND), INFOCAM (C-LM), Aragón, fogos.pt. Resto: <strong>FIRMS</strong> satélite. Candidatos: 112CV, EUMETSAT FRP.";
     appendListItem(sat);
   }
 
@@ -1531,13 +1689,14 @@
   }
 
   function formatClock(date) {
+    const locale = I18n.clockLocale();
     try {
-      return new Intl.DateTimeFormat("es-ES", {
+      return new Intl.DateTimeFormat(locale, {
         hour: "2-digit",
         minute: "2-digit",
       }).format(date);
     } catch {
-      return date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+      return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
     }
   }
 
@@ -1547,21 +1706,26 @@
 
   function updateTicker() {
     const visible = filteredFires();
-    const cyl = visible.filter((f) => f.source === SOURCE.JCYL).length;
-    const ga = visible.filter((f) => f.source === SOURCE.GALICIA).length;
-    const cat = visible.filter((f) => f.source === SOURCE.BOMBERS).length;
-    const andal = visible.filter((f) => f.source === SOURCE.INFOCA).length;
-    const pt = visible.filter((f) => f.source === SOURCE.FOGOS).length;
+    const activos = visible.filter((f) => f.statusClass === "activo").length;
     const firmsOn = !(els.layerFirms && !els.layerFirms.checked);
     const bits = [];
-    if (firmsOn && firmsCount) bits.push(`${firmsCount} sat`);
-    if (cyl) bits.push(`${cyl} CyL`);
-    if (ga) bits.push(`${ga} Gal`);
-    if (cat) bits.push(`${cat} CAT`);
-    if (andal) bits.push(`${andal} AND`);
-    if (pt) bits.push(`${pt} PT`);
+    if (visible.length) {
+      bits.push(
+        I18n.t(visible.length === 1 ? "ticker.fires_one" : "ticker.fires_many", {
+          n: visible.length,
+        })
+      );
+      if (activos) {
+        bits.push(
+          I18n.t(activos === 1 ? "ticker.active_one" : "ticker.active_many", { n: activos })
+        );
+      }
+    }
+    if (firmsOn && firmsCount) bits.push(I18n.t("ticker.sat", { n: firmsCount }));
     const clock = formatClock(new Date());
-    const line = bits.length ? `${bits.join(" · ")} · ${clock}` : `Actualizando… · ${clock}`;
+    const line = bits.length
+      ? `${bits.join(" · ")} · ${clock}`
+      : `${I18n.t("ticker.updating")} · ${clock}`;
     setHeaderStatus(line);
   }
 
@@ -1600,6 +1764,24 @@
         short: "INFOCA",
         caveat: "Incidente INFOCA (Junta de Andalucía / EMA) vía cuadro de mando público.",
         titleTag: "INFOCA Andalucía",
+      };
+    }
+    if (fire.source === SOURCE.INFOCAM) {
+      return {
+        kind: "oficial",
+        label: "Oficial · INFOCAM",
+        short: "INFOCAM",
+        caveat: "Parte INFOCAM (Castilla-La Mancha) vía FeatureServer público.",
+        titleTag: "INFOCAM C-LM",
+      };
+    }
+    if (fire.source === SOURCE.ARAGON) {
+      return {
+        kind: "oficial",
+        label: "Oficial · Aragón",
+        short: "Aragón",
+        caveat: "Incendio activo CartoFor / IDEAragon (metadatos limitados: id + punto).",
+        titleTag: "Aragón CartoFor",
       };
     }
     if (fire.source === SOURCE.FOGOS) {
@@ -1647,6 +1829,16 @@
         ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">INFOCA / EMA</a>`
         : "INFOCA";
     }
+    if (fire.source === SOURCE.INFOCAM) {
+      return fire.detailUrl
+        ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">INFOCAM / FIDIAS</a>`
+        : "INFOCAM";
+    }
+    if (fire.source === SOURCE.ARAGON) {
+      return fire.detailUrl
+        ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">IDEAragon</a>`
+        : "Aragón";
+    }
     if (fire.source === SOURCE.FOGOS) {
       return fire.detailUrl
         ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">${SOURCE.FOGOS}</a> (ANEPC)`
@@ -1657,41 +1849,52 @@
 
   async function refresh() {
     if (refreshInFlight) return refreshInFlight;
-    setHeaderStatus("Actualizando…");
+    setHeaderStatus(I18n.t("ticker.updating"));
     refreshInFlight = (async () => {
     try {
-      const [esResult, gaResult, catResult, andResult, ptResult, firmsResult] = await Promise.allSettled([
-        fetchJcylFires(),
-        fetchGaliciaFires(),
-        fetchBombersFires(),
-        fetchInfocaFires(),
-        fetchFogosPtFires(),
-        fetchFirmsHotspots(),
-      ]);
+      const [esResult, gaResult, catResult, andResult, clmResult, araResult, ptResult, firmsResult] =
+        await Promise.allSettled([
+          fetchJcylFires(),
+          fetchGaliciaFires(),
+          fetchBombersFires(),
+          fetchInfocaFires(),
+          fetchInfocamFires(),
+          fetchAragonFires(),
+          fetchFogosPtFires(),
+          fetchFirmsHotspots(),
+        ]);
       const esFires = esResult.status === "fulfilled" ? esResult.value : [];
       const gaFires = gaResult.status === "fulfilled" ? gaResult.value : [];
       const catFires = catResult.status === "fulfilled" ? catResult.value : [];
       const andFires = andResult.status === "fulfilled" ? andResult.value : [];
+      const clmFires = clmResult.status === "fulfilled" ? clmResult.value : [];
+      const araFires = araResult.status === "fulfilled" ? araResult.value : [];
       const ptFires = ptResult.status === "fulfilled" ? ptResult.value : [];
       if (esResult.status === "rejected") console.error(esResult.reason);
       if (gaResult.status === "rejected") console.error(gaResult.reason);
       if (catResult.status === "rejected") console.error(catResult.reason);
       if (andResult.status === "rejected") console.error(andResult.reason);
+      if (clmResult.status === "rejected") console.error(clmResult.reason);
+      if (araResult.status === "rejected") console.error(araResult.reason);
       if (ptResult.status === "rejected") console.error(ptResult.reason);
       if (firmsResult.status === "rejected") console.error(firmsResult.reason);
 
       if (firmsResult.status === "fulfilled") {
         setFirmsData(firmsResult.value);
-      } else {
+      } else if (!firmsCount) {
         setFirmsData({ type: "FeatureCollection", features: [] });
       }
 
-      fires = [...esFires, ...gaFires, ...catFires, ...andFires, ...ptFires].sort(compareFires);
+      fires = [...esFires, ...gaFires, ...catFires, ...andFires, ...clmFires, ...araFires, ...ptFires].sort(
+        compareFires
+      );
       const notes = [];
       if (esResult.status === "rejected") notes.push("CyL");
       if (gaResult.status === "rejected") notes.push("Gal");
       if (catResult.status === "rejected") notes.push("CAT");
       if (andResult.status === "rejected") notes.push("AND");
+      if (clmResult.status === "rejected") notes.push("CLM");
+      if (araResult.status === "rejected") notes.push("ARA");
       if (ptResult.status === "rejected") notes.push("PT");
       if (firmsResult.status === "rejected") notes.push("sat");
 
@@ -1701,6 +1904,7 @@
       updateTicker();
       scheduleLeafletResize();
       lastRefreshAt = Date.now();
+      if (fires.length || firmsCount) writeSpotsCache(fires, firmsGeo);
       if (notes.length) {
         setHeaderStatus(`${els.ticker.textContent} · falló ${notes.join("/")}`);
       }
@@ -1712,24 +1916,29 @@
 
       if (
         !fires.length &&
+        !firmsCount &&
         esResult.status === "rejected" &&
         gaResult.status === "rejected" &&
         catResult.status === "rejected" &&
         andResult.status === "rejected" &&
+        clmResult.status === "rejected" &&
+        araResult.status === "rejected" &&
         ptResult.status === "rejected" &&
         firmsResult.status === "rejected"
       ) {
-        els.list.innerHTML = '<li class="error">No se pudieron cargar los datos.</li>';
+        els.list.innerHTML = `<li class="error">${escapeHtml(I18n.t("error.load"))}</li>`;
         setHeaderStatus("Error al actualizar");
       }
     } catch (err) {
       console.error(err);
-      fires = [];
-      selectedId = null;
-      els.sidebar.classList.remove("is-detail");
+      // Keep cached / last good spots on screen when the refresh blows up.
+      if (!fires.length && !firmsCount) {
+        selectedId = null;
+        els.sidebar.classList.remove("is-detail");
+        els.list.innerHTML = `<li class="error">${escapeHtml(I18n.t("error.load"))}</li>`;
+        clearMarkers();
+      }
       setHeaderStatus("Error al actualizar");
-      els.list.innerHTML = '<li class="error">No se pudieron cargar los datos.</li>';
-      clearMarkers();
     } finally {
       refreshInFlight = null;
     }
@@ -1900,7 +2109,7 @@
         els.btnLayers.classList.remove("is-active");
       }
     }
-    document.title = open ? TITLE_ABOUT : TITLE_HOME;
+    document.title = open ? aboutTitle() : TITLE_HOME;
     if (!skipHash) {
       if (open && currentHash() !== "about") {
         history.pushState(null, "", "#about");
@@ -2004,14 +2213,6 @@
       });
     }
 
-    const aboutToMap = document.getElementById("about-to-map");
-    if (aboutToMap) {
-      aboutToMap.addEventListener("click", (e) => {
-        e.preventDefault();
-        setAboutOpen(false);
-      });
-    }
-
     const bindCheck = (input, onChange) => {
       const sync = () => {
         const label = input.closest(".layer-item");
@@ -2083,6 +2284,24 @@
         updateTicker();
       });
     }
+    if (els.layerClm) {
+      els.layerClm.addEventListener("change", () => {
+        const on = els.layerClm.checked;
+        els.layerClm.closest(".layer-item")?.classList.toggle("is-on", on);
+        renderSidebar();
+        renderMarkers();
+        updateTicker();
+      });
+    }
+    if (els.layerAragon) {
+      els.layerAragon.addEventListener("change", () => {
+        const on = els.layerAragon.checked;
+        els.layerAragon.closest(".layer-item")?.classList.toggle("is-on", on);
+        renderSidebar();
+        renderMarkers();
+        updateTicker();
+      });
+    }
     if (els.layerPortugal) {
       els.layerPortugal.addEventListener("change", () => {
         const on = els.layerPortugal.checked;
@@ -2104,6 +2323,8 @@
       els.layerGalicia,
       els.layerCatalunya,
       els.layerAndalucia,
+      els.layerClm,
+      els.layerAragon,
       els.layerPortugal,
       els.layerFirms,
       els.layerHotspots,
@@ -2139,10 +2360,19 @@
   }
 
   async function boot() {
+    I18n.init();
+    I18n.setOnChange(() => {
+      if (document.documentElement.classList.contains("is-about")) {
+        document.title = aboutTitle();
+      }
+      updateTicker();
+      renderSidebar();
+    });
     wireUi();
     const startData = () => {
       ensureFirmsLayers();
       applyLayerChecks();
+      hydrateFromCache();
       refresh();
       startRefreshLoop();
     };
@@ -2165,7 +2395,7 @@
         mapEl.innerHTML =
           "<p style='padding:1.5rem;font-family:sans-serif;max-width:28rem'>No se pudo iniciar el mapa. En iPhone con Modo de aislamiento, prueba recargar; si sigue fallando, excluye este sitio del modo o usa otro navegador.</p>";
       }
-      if (els.ticker) setHeaderStatus("Mapa no disponible");
+      if (els.ticker) setHeaderStatus(I18n.t("ticker.unavailable"));
     }
   }
 

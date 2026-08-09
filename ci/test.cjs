@@ -88,7 +88,7 @@ function read(file) {
 
 async function main() {
   test("required files exist", () => {
-    for (const f of ["index.html", "index.js", "about.html", "favicon.svg", "LICENSE", "README.md", "DATA.md", ".nojekyll", "lib/fires.js"]) {
+    for (const f of ["index.html", "index.js", "about.html", "favicon.svg", "LICENSE", "README.md", "DATA.md", ".nojekyll", "lib/fires.js", "lib/i18n.js"]) {
       assert.ok(fs.existsSync(path.join(root, f)), missing(f));
     }
     assert.ok(!fs.existsSync(path.join(root, "about.js")), "about.js removed with coverage map");
@@ -114,11 +114,12 @@ async function main() {
       "incendios.gal",
       "Bombers",
       "INFOCA",
+      "INFOCAM",
+      "Aragón",
       "fogos.pt",
       "software experimental de aficionado",
       "par de horas",
       'href="#about"',
-      "about-to-map",
     ]) {
       assert.ok(html.includes(needle), `missing ${needle}`);
     }
@@ -140,6 +141,8 @@ async function main() {
       'id="layer-galicia"',
       'id="layer-catalunya"',
       'id="layer-andalucia"',
+      'id="layer-clm"',
+      'id="layer-aragon"',
       'id="btn-sheet"',
       "sheet-handle",
       "./index.js",
@@ -167,19 +170,29 @@ async function main() {
       "FOGOS_FALLBACK_URL",
       "BOMBERS_FALLBACK_URL",
       "INFOCA_FALLBACK_URL",
+      "INFOCAM_FALLBACK_URL",
+      "ARAGON_FALLBACK_URL",
       "fetchJsonWithFallback",
       "fetchBombersFires",
       "fetchInfocaFires",
+      "fetchInfocamFires",
+      "fetchAragonFires",
       "filterBombersRows",
       "filterInfocaRows",
+      "filterInfocamRows",
+      "filterAragonRows",
       "./data/firms.geojson",
       "./data/fires.json",
       "./data/bombers.geojson",
       "./data/infoca.geojson",
+      "./data/infocam.geojson",
+      "./data/aragon.geojson",
       "/firms",
       "/fires",
       "/bombers",
       "/infoca",
+      "/infocam",
+      "/aragon",
       "SOURCE",
       "SITE_HOST",
       "ATTR_OSM_CARTO",
@@ -190,6 +203,9 @@ async function main() {
       "fetchFogosPtFires",
       "fetchFirmsHotspots",
       "filterFogosRows",
+      "hydrateFromCache",
+      "writeSpotsCache",
+      "SPOTS_CACHE_KEY",
       "ensureFirmsLayers",
       "GALICIA_BBOX",
       "España · satélite",
@@ -222,6 +238,7 @@ async function main() {
       assert.ok(js.includes(needle), `missing ${needle}`);
     }
     assert.ok(html.includes("./lib/fires.js"));
+    assert.ok(html.includes("./lib/i18n.js"));
     assert.ok(html.includes("layer-firms"));
     assert.ok(html.includes("layer-portugal"));
     assert.ok(js.includes("leaflet@1.9.4"), "Leaflet CDN for Lockdown/no-WebGL fallback");

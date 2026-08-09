@@ -9,11 +9,13 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 | [JCyL incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) | Castilla y León (9 provincias) | Partes oficiales (JSON ODS) | Sí (partes diarios) | Sí (`*`) | **Sí** — puntos + resumen | Filtramos: sin `fecha_extinguido`, estado ACTIVO/CONTROLADO/ESTABILIZADO, parte ≤3 días |
 | [Bombers CAT](https://experience.arcgis.com/experience/f6172fd2d6974bc0a8c51e3a6bc2a735) ArcGIS | Cataluña | Actuaciones vegetación (GeoJSON) | Sí | Sí (`*`) / Worker | **Sí** — vía proxy `/bombers` | `TAL_COD_ALARMA1=IV`; sin Extingit; bbox CAT |
 | [INFOCA / EMA](https://laagencia.maps.arcgis.com/apps/dashboards/87a5fe2d397e4140add84f50d8bdafd3) | Andalucía | Incidentes abiertos (GeoJSON) | Sí | Worker | **Sí** — vía proxy `/infoca` | Filtra EXTINGUIDO; estados ACTIVO/CONTROLADO/… |
+| [INFOCAM](https://fidias.castillalamancha.es/) ArcGIS | Castilla-La Mancha | Partes forestales (GeoJSON) | Sí | Sí (`*`) / Worker | **Sí** — vía proxy `/infocam` | `Siniestro=FORESTAL`; sin EXTINGUIDO / falsa alarma |
+| [Aragón CartoFor](https://idearagon.aragon.es/) WFS | Aragón | Incendios activos (GeoJSON) | Sí | **No** → Worker | **Sí** — vía proxy `/aragon` | Capa `INCENDIOS_ACTIVOS`; metadatos sparsos (id+punto) |
 | [incendios.gal](https://incendios.gal/) API | Galicia | Avisos cidadáns (JSON) | Sí | Sí (`*`) | **Sí** — puntos Galicia | No oficial; filtramos tipos lume/fume/queimada/medios/afectación, ≤14 días |
 | [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) WMS | Europa (toda España) | Hotspots VIIRS + área quemada | Sí (satélite) | Sí (teselas WMS) | **Sí** — capa opcional | Detecciones, **no** despachos de extinción |
 | [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) VIIRS Europe CSV | Europa → filtrado ES | Hotspots satélite (puntos) | Sí (24h) | **No** (CORS) | **Sí** — vía proxy Worker `/firms` (+ fallback `data/firms.geojson`) | Suomi-NPP + NOAA-20 + NOAA-21; confianza nominal/high; cluster ~0.02° |
 | [fogos.pt](https://fogos.pt) / `api-lb.fogos.pt` | Portugal | Despachos ANEPC (JSON) | Sí | **No** (CORS) desde github.io | **Sí** — vía proxy Worker `/fires` (+ fallback `data/fires.json`) | Naturaleza `31xx`; excluye Conclusão/Encerrada |
-| FIDIAS (C-LM) | Castilla-La Mancha | HTML listado | Sí | Scrape | **No** (siguiente) | Sin coords → centroides municipio; ver [`data/REGIONAL.md`](./data/REGIONAL.md) |
+| FIDIAS (C-LM) HTML | Castilla-La Mancha | HTML listado | Sí | Scrape | **No** (supersedido) | Sustituido por FeatureServer INFOCAM |
 | 112CV mapas | C. Valenciana | JSF / emergencias | Sí | Opaco | **No** (candidato) | Reverse-engineer; peers lo usan |
 | EUMETSAT SEVIRI FRP | España | Satélite geoestacionario 15 min | Sí | Server | **No** (candidato) | Rellena huecos entre pases VIIRS |
 | [ppetru/incidents-pt](https://github.com/ppetru/incidents-pt) | Portugal | Espejo scrape ANEPC → JSON en GitHub | ~horario | Sí (raw GitHub) | No (candidato) | Incluye todos los incidentes; filtrar incendios (`Natureza` 31xx) |
@@ -43,6 +45,19 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 - **Proxy:** `https://fuegos-proxy.crew.workers.dev/infoca` → FeatureServer Incidentes (dashboard EMA).
 - **Qué usamos:** estados ACTIVO / CONTROLADO / ESTABILIZADO / DECLARADO; medios vehículos/aéreos.
 - **Fallback:** `./data/infoca.geojson`.
+
+### INFOCAM (Castilla-La Mancha)
+
+- **Proxy:** `https://fuegos-proxy.crew.workers.dev/infocam` → `PartesIncendio_APPWeb_Vista` GeoJSON.
+- **Qué usamos:** siniestros `FORESTAL` no extinguidos, sin falsa alarma; municipio, provincia, ha, estado, detección/control.
+- **Fallback:** `./data/infocam.geojson`.
+- **Nota:** sustituye el plan de scrape HTML de FIDIAS (mismas partes, con coordenadas).
+
+### Aragón (CartoFor / IDEAragon)
+
+- **Proxy:** `https://fuegos-proxy.crew.workers.dev/aragon` → WFS `DAGMA_INCENDIOS:INCENDIOS_ACTIVOS`.
+- **Qué usamos:** puntos activos (`esactivo≠0`); la capa oficial no publica municipio/estado textual.
+- **Fallback:** `./data/aragon.geojson`.
 
 ### incendios.gal (Galicia, cidadán)
 
@@ -94,10 +109,14 @@ Hasta que exista otra fuente abierta usable en el navegador, el resto de España
 
 ```text
 ┌─────────────────────────────────────────────┐
-│  Mapa España (MapLibre)                     │
+│  Mapa España (MapLibre / Leaflet)           │
 │  · Puntos FIRMS (toda ES, satélite)         │
 │  · Marcadores JCyL (CyL oficiales)          │
 │  · Marcadores incendios.gal (Galicia)       │
+│  · Marcadores Bombers (CAT)                 │
+│  · Marcadores INFOCA (AND)                  │
+│  · Marcadores INFOCAM (C-LM)                │
+│  · Marcadores Aragón (CartoFor)             │
 │  · Marcadores fogos.pt (Portugal)           │
 │  · Capas EFFIS opcionales                   │
 └─────────────────────────────────────────────┘

@@ -1,0 +1,56 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "INCENDIOS_ACTIVOS.1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.88,
+          41.65
+        ]
+      },
+      "properties": {
+        "objectid": 1,
+        "id": 42001,
+        "id_estado": 2,
+        "esactivo": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "INCENDIOS_ACTIVOS.2",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          10.0,
+          41.0
+        ]
+      },
+      "properties": {
+        "objectid": 2,
+        "id": 42002,
+        "id_estado": 2,
+        "esactivo": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "INCENDIOS_ACTIVOS.3",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -1.0,
+          41.5
+        ]
+      },
+      "properties": {
+        "objectid": 3,
+        "id": 42003,
+        "id_estado": 5,
+        "esactivo": 0
+      }
+    }
+  ]
+}

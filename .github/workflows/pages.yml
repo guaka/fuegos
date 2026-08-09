@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           mkdir -p _site/lib _site/data
           cp index.html index.js about.html favicon.svg LICENSE README.md _site/
-          cp lib/fires.js _site/lib/
+          cp lib/fires.js lib/i18n.js _site/lib/
           touch _site/.nojekyll
           BUILD_TIME="$(date -u '+%Y-%m-%d %H:%M')"
           BUILD_ISO="$(date -u '+%Y-%m-%dT%H:%M:00Z')"
@@ -49,13 +49,19 @@ jobs:
           curl -fsSL --max-time 45 -A 'FuegosVivos-PagesBuild' \
             "https://fuegos-proxy.crew.workers.dev/infoca" -o _site/data/infoca.geojson \
             || echo '{"type":"FeatureCollection","features":[]}' > _site/data/infoca.geojson
+          curl -fsSL --max-time 45 -A 'FuegosVivos-PagesBuild' \
+            "https://fuegos-proxy.crew.workers.dev/infocam" -o _site/data/infocam.geojson \
+            || echo '{"type":"FeatureCollection","features":[]}' > _site/data/infocam.geojson
+          curl -fsSL --max-time 45 -A 'FuegosVivos-PagesBuild' \
+            "https://fuegos-proxy.crew.workers.dev/aragon" -o _site/data/aragon.geojson \
+            || echo '{"type":"FeatureCollection","features":[]}' > _site/data/aragon.geojson
           python3 - <<'PY'
           import json
           fires=json.load(open("_site/data/fires.json"))
           firms=json.load(open("_site/data/firms.geojson"))
           assert "data" in fires or isinstance(fires, list), fires
           assert firms.get("type")=="FeatureCollection", firms
-          for name in ("bombers","infoca"):
+          for name in ("bombers","infoca","infocam","aragon"):
             g=json.load(open(f"_site/data/{name}.geojson"))
             assert g.get("type")=="FeatureCollection", name
             print(f"fallback {name}", len(g.get("features", [])))

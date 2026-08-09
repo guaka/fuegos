@@ -109,6 +109,25 @@ async function installApiMocks(page) {
       body: JSON.stringify(firmsGeo()),
     });
   });
+  // Empty regional layers so e2e marker counts stay deterministic.
+  const emptyFc = JSON.stringify({ type: "FeatureCollection", features: [] });
+  for (const path of ["bombers", "infoca", "infocam", "aragon"]) {
+    await page.route(`**/fuegos-proxy.crew.workers.dev/${path}**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/geo+json",
+        headers: { "access-control-allow-origin": "*" },
+        body: emptyFc,
+      });
+    });
+    await page.route(`**/data/${path}.geojson`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/geo+json",
+        body: emptyFc,
+      });
+    });
+  }
   await page.route("**/basemaps.cartocdn.com/**", (route) => route.abort());
   await page.route("**/elevation-tiles-prod/**", (route) => route.abort());
   await page.route("**/maps.effis.emergency.copernicus.eu/**", (route) => route.abort());

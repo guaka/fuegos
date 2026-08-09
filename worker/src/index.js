@@ -6,6 +6,8 @@
  * GET  /firms   → NASA FIRMS VIIRS Europe CSV → Spain GeoJSON
  * GET  /bombers → Bombers CAT vegetation incidents (GeoJSON)
  * GET  /infoca  → Andalucía INFOCA open incidents (GeoJSON)
+ * GET  /infocam → Castilla-La Mancha INFOCAM partes (GeoJSON)
+ * GET  /aragon  → Aragón CartoFor active fires WFS (GeoJSON)
  * OPTIONS /*    → CORS preflight
  */
 
@@ -18,6 +20,13 @@ const BOMBERS_QUERY =
 const INFOCA_QUERY =
   "https://utility.arcgis.com/usrsvcs/servers/d6d1c0079ddd4c7f8876d58e13fcf1ac/" +
   "rest/services/INFOCA/AN_INCIDENTES_PRO/FeatureServer/2/query";
+
+const INFOCAM_QUERY =
+  "https://services-eu1.arcgis.com/LVA9E9zjh6QfM7Mo/arcgis/rest/services/" +
+  "PartesIncendio_APPWeb_Vista/FeatureServer/0/query";
+
+const ARAGON_WFS =
+  "https://idearagon.aragon.es/geoserver/DAGMA_INCENDIOS/wfs";
 
 const FIRMS_CSVS = [
   "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Europe_24h.csv",
@@ -156,6 +165,10 @@ function firmsToGeoJSON(allRows) {
   };
 }
 
+/**
+ * Serve from Cache API, or fetch upstream and store.
+ * Cached copies omit CORS/Vary so variants don't fan out; CORS is applied on the way out.
+ */
 async function cachedJsonProxy(request, url, cachePath, upstreamUrl, maxAgeSec) {
   const cache = caches.default;
   const cacheKey = new Request(new URL(cachePath, url.origin).toString(), { method: "GET" });
@@ -176,7 +189,21 @@ async function cachedJsonProxy(request, url, cachePath, upstreamUrl, maxAgeSec) 
 
   const body = await upstream.arrayBuffer();
   const contentType = upstream.headers.get("Content-Type") || "application/json; charset=utf-8";
-  const res = new Response(body, {
+
+  if (upstream.ok) {
+    // Store without Vary/CORS — Cache API honors Vary and would key by Origin.
+    const toStore = new Response(body.slice(0), {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": `public, max-age=${maxAgeSec}`,
+      },
+    });
+    // Must await — otherwise the isolate can exit before the write lands.
+    await cache.put(cacheKey, toStore);
+  }
+
+  return new Response(body, {
     status: upstream.status,
     headers: {
       ...corsHeaders(request),
@@ -185,9 +212,6 @@ async function cachedJsonProxy(request, url, cachePath, upstreamUrl, maxAgeSec) 
       "X-Proxy-Cache": "MISS",
     },
   });
-
-  if (upstream.ok) cache.put(cacheKey, res.clone());
-  return res;
 }
 
 function bombersUpstreamUrl() {
@@ -214,6 +238,30 @@ function infocaUpstreamUrl() {
   return `${INFOCA_QUERY}?${q}`;
 }
 
+function infocamUpstreamUrl() {
+  const q = new URLSearchParams({
+    where: "Siniestro='FORESTAL' AND Estado<>'EXTINGUIDO' AND FalsaAlarma='NO'",
+    outFields: "*",
+    returnGeometry: "true",
+    outSR: "4326",
+    resultRecordCount: "2000",
+    f: "geojson",
+  });
+  return `${INFOCAM_QUERY}?${q}`;
+}
+
+function aragonUpstreamUrl() {
+  const q = new URLSearchParams({
+    service: "WFS",
+    version: "2.0.0",
+    request: "GetFeature",
+    typeNames: "DAGMA_INCENDIOS:INCENDIOS_ACTIVOS",
+    outputFormat: "application/json",
+    srsName: "EPSG:4326",
+  });
+  return `${ARAGON_WFS}?${q}`;
+}
+
 async function proxyFogos(request, url) {
   return cachedJsonProxy(request, url, "/fires", FOGOS_UPSTREAM, 60);
 }
@@ -224,6 +272,14 @@ async function proxyBombers(request, url) {
 
 async function proxyInfoca(request, url) {
   return cachedJsonProxy(request, url, "/infoca", infocaUpstreamUrl(), 90);
+}
+
+async function proxyInfocam(request, url) {
+  return cachedJsonProxy(request, url, "/infocam", infocamUpstreamUrl(), 90);
+}
+
+async function proxyAragon(request, url) {
+  return cachedJsonProxy(request, url, "/aragon", aragonUpstreamUrl(), 90);
 }
 
 async function proxyFirms(request, url) {
@@ -249,19 +305,30 @@ async function proxyFirms(request, url) {
 
   const rows = texts.flatMap(parseCsv);
   const geo = firmsToGeoJSON(rows);
-  const res = new Response(JSON.stringify(geo), {
+  const payload = JSON.stringify(geo);
+  const count = String(geo.features.length);
+
+  const toStore = new Response(payload, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/geo+json; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+      "X-Firms-Count": count,
+    },
+  });
+  // Must await — otherwise the isolate can exit before the write lands.
+  await cache.put(cacheKey, toStore);
+
+  return new Response(payload, {
     status: 200,
     headers: {
       ...corsHeaders(request),
       "Content-Type": "application/geo+json; charset=utf-8",
       "Cache-Control": "public, max-age=300",
       "X-Proxy-Cache": "MISS",
-      "X-Firms-Count": String(geo.features.length),
+      "X-Firms-Count": count,
     },
   });
-
-  cache.put(cacheKey, res.clone());
-  return res;
 }
 
 export default {
@@ -280,6 +347,8 @@ export default {
       if (url.pathname === "/firms") return await proxyFirms(request, url);
       if (url.pathname === "/bombers") return await proxyBombers(request, url);
       if (url.pathname === "/infoca") return await proxyInfoca(request, url);
+      if (url.pathname === "/infocam") return await proxyInfocam(request, url);
+      if (url.pathname === "/aragon") return await proxyAragon(request, url);
       if (url.pathname === "/fires" || url.pathname === "/") return await proxyFogos(request, url);
     } catch (err) {
       return new Response(JSON.stringify({ error: String(err && err.message ? err.message : err) }), {
@@ -291,7 +360,7 @@ export default {
       });
     }
 
-    return new Response("Not Found — try GET /firms /fires /bombers /infoca", {
+    return new Response("Not Found — try GET /firms /fires /bombers /infoca /infocam /aragon", {
       status: 404,
       headers: { ...corsHeaders(request), "content-type": "text/plain; charset=utf-8" },
     });

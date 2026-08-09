@@ -19,8 +19,8 @@ test.describe("Fuegos Vivos map e2e", () => {
     await page.goto("/");
     await expect(page.locator("#map")).toBeVisible();
     await expect(page.locator("#ticker")).not.toHaveText(/Cargando/i, { timeout: 30_000 });
-    await expect(page.locator("#ticker")).toContainText(/CyL/i, { timeout: 30_000 });
-    await expect(page.locator("#ticker")).toContainText(/PT/i);
+    await expect(page.locator("#ticker")).toContainText(/\d+\s+incendio/i, { timeout: 30_000 });
+    await expect(page.locator("#ticker")).toContainText(/\d+\s+sat/i);
 
     const markerCount = await page.locator(".map-marker").count();
     const FF = require("../../lib/fires.js");
@@ -54,6 +54,22 @@ test.describe("Fuegos Vivos map e2e", () => {
     await expect(actions.locator("#btn-layers")).toHaveText(/Mapa/i);
     await expect(actions.locator('a.top-btn[href="#about"]')).toHaveText(/Sobre/i);
     await expect(page.locator(".layers-head")).toHaveCount(0);
+  });
+
+  test("language switcher defaults to ES and can switch to EN", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("lang", "es");
+    await expect(page.locator('.lang-btn[data-lang="es"]')).toHaveClass(/is-active/);
+    await page.locator('.lang-btn[data-lang="en"]').click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("#btn-layers")).toHaveText(/^Map$/);
+    await expect(page.locator("#link-about")).toHaveText(/^About$/);
+    // Map panel stays Spanish; only chrome (nav / about) switches.
+    await expect(page.locator(".panel-title").first()).toContainText(/Toda España/i, {
+      timeout: 30_000,
+    });
+    await page.locator("#link-about").click();
+    await expect(page.locator("#coverage-title")).toContainText(/Where it comes from/i);
   });
 
   test("Aquí locate control is on the map", async ({ page }) => {
@@ -93,7 +109,7 @@ test.describe("Fuegos Vivos map e2e", () => {
 
   test("overview cards label source kind", async ({ page }) => {
     await page.goto("/");
-    await page.locator("#btn-sheet").click();
+    // Desktop: sidebar is already open (sheet handle is mobile-only).
     await expect(page.locator(".region-card.is-firms .source-badge.sat")).toContainText(/Satélite/i, {
       timeout: 30_000,
     });

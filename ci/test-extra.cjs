@@ -68,6 +68,29 @@ async function runExtraTests(test, testAsync) {
     assert.strictEqual(fires[0].aerial, 2);
   });
 
+  test("filterInfocamRows keeps open FORESTAL and drops extinguido / falsa alarma", () => {
+    const sample = loadJson("infocam-sample.geojson");
+    const now = 1786200000000 + 2 * 3600e3;
+    const fires = FF.filterInfocamRows(sample, now);
+    assert.ok(fires.length >= 1, fires.map((f) => f.id).join(","));
+    assert.ok(fires.every((f) => f.source === "INFOCAM"));
+    assert.ok(fires.some((f) => f.id === "clm:999003"));
+    assert.ok(!fires.some((f) => f.id === "clm:999001"));
+    assert.ok(!fires.some((f) => f.id === "clm:999002"));
+    const albacete = fires.find((f) => f.id === "clm:999003");
+    assert.strictEqual(albacete.statusClass, "activo");
+    assert.strictEqual(albacete.surface, "12.5 ha");
+  });
+
+  test("filterAragonRows keeps esactivo points inside Aragón bbox", () => {
+    const sample = loadJson("aragon-sample.geojson");
+    const fires = FF.filterAragonRows(sample);
+    assert.strictEqual(fires.length, 1);
+    assert.strictEqual(fires[0].source, "Aragón");
+    assert.strictEqual(fires[0].id, "ara:42001");
+    assert.strictEqual(fires[0].statusClass, "activo");
+  });
+
   test("parseFogosDateMs parses DD-MM-YYYY", () => {
     const ms = FF.parseFogosDateMs("09-08-2026", "14:30");
     assert.ok(ms > 0);
@@ -148,16 +171,63 @@ async function runExtraTests(test, testAsync) {
     }
   });
 
-  test("Worker source exposes fires firms bombers infoca", () => {
+  test("i18n defaults to ES and translates EN/PT", () => {
+    const I18n = require("../lib/i18n.js");
+    assert.strictEqual(I18n.DEFAULT_LANG, "es");
+    assert.strictEqual(I18n.resolveLang("", null), "es");
+    assert.strictEqual(I18n.resolveLang("?lang=en", null), "en");
+    assert.strictEqual(I18n.resolveLang("?lang=pt", "en"), "pt");
+    assert.strictEqual(I18n.resolveLang("", "en"), "en");
+    assert.strictEqual(I18n.resolveLang("?lang=fr", "xx"), "es");
+    I18n.setLang("es", { skipPersist: true, silent: true });
+    assert.strictEqual(I18n.t("nav.map"), "Mapa");
+    assert.strictEqual(I18n.t("nav.about"), "Sobre");
+    I18n.setLang("en", { skipPersist: true, silent: true });
+    assert.strictEqual(I18n.t("nav.map"), "Map");
+    assert.strictEqual(I18n.t("nav.about"), "About");
+    assert.ok(I18n.t("about.coverageTitle").includes("Where"));
+    I18n.setLang("pt", { skipPersist: true, silent: true });
+    assert.strictEqual(I18n.t("nav.map"), "Mapa");
+    assert.ok(I18n.t("about.lead").includes("Portugal"));
+    assert.ok(!("detectionUnit" in I18n));
+    I18n.setLang("es", { skipPersist: true, silent: true });
+  });
+
+  test("index.html wires i18n script and lang switcher", () => {
+    const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+    assert.ok(html.includes("./lib/i18n.js"));
+    assert.ok(html.includes('data-lang="es"'));
+    assert.ok(html.includes('data-lang="en"'));
+    assert.ok(html.includes('data-lang="pt"'));
+    assert.ok(html.includes("lang-switch"));
+    assert.ok(html.includes('data-i18n="nav.map"'));
+    assert.ok((html.match(/id="coverage-title"/g) || []).length === 1);
+  });
+
+  test("index.js boots FuegosI18n", () => {
+    const js = fs.readFileSync(path.join(root, "index.js"), "utf8");
+    assert.ok(js.includes("FuegosI18n"));
+    assert.ok(js.includes("I18n.init()"));
+    assert.ok(js.includes("I18n.setOnChange"));
+    assert.ok(js.includes("Toda España"));
+    assert.ok(js.includes('I18n.t("title.about"'));
+    assert.ok(js.includes("Satélite · FIRMS"));
+  });
+
+  test("Worker source exposes fires firms bombers infoca infocam aragon", () => {
     const src = fs.readFileSync(path.join(root, "worker", "src", "index.js"), "utf8");
     assert.ok(src.includes('pathname === "/firms"'));
     assert.ok(src.includes('pathname === "/fires"'));
     assert.ok(src.includes('pathname === "/bombers"'));
     assert.ok(src.includes('pathname === "/infoca"'));
+    assert.ok(src.includes('pathname === "/infocam"'));
+    assert.ok(src.includes('pathname === "/aragon"'));
     assert.ok(src.includes("firmsToGeoJSON"));
     assert.ok(src.includes("FOGOS_UPSTREAM") || src.includes("api-lb.fogos.pt"));
     assert.ok(src.includes("BOMBERS_QUERY") || src.includes("ACTUACIONS_URGENTS"));
     assert.ok(src.includes("INFOCA_QUERY") || src.includes("AN_INCIDENTES_PRO"));
+    assert.ok(src.includes("INFOCAM_QUERY") || src.includes("PartesIncendio_APPWeb_Vista"));
+    assert.ok(src.includes("ARAGON_WFS") || src.includes("INCENDIOS_ACTIVOS"));
     assert.ok(src.includes("https://fuegos.guaka.org"), "custom domain in ALLOWED_ORIGINS");
   });
 

@@ -74,6 +74,36 @@ Andalucía points MUST come from Worker `GET /infoca`. Only open estados
 - **WHEN** `filterInfocaRows` runs
 - **THEN** the feature MUST be excluded
 
+### Requirement: Castilla-La Mancha INFOCAM open partes
+
+Castilla-La Mancha points MUST come from Worker `GET /infocam` (INFOCAM FeatureServer).
+Only forestal siniestros that are not extinguished and not false alarms, with coordinates
+inside C-LM, MUST be shown.
+
+#### Scenario: Keep ACTIVO FORESTAL
+
+- **GIVEN** a GeoJSON feature with `Siniestro` FORESTAL, `Estado` ACTIVO, `FalsaAlarma` NO, coords in C-LM
+- **WHEN** `filterInfocamRows` runs
+- **THEN** a fire with `source: "INFOCAM"` and `country: "ES"` MUST be returned
+
+#### Scenario: Drop EXTINGUIDO or falsa alarma
+
+- **GIVEN** `Estado` EXTINGUIDO OR `FalsaAlarma` SI
+- **WHEN** `filterInfocamRows` runs
+- **THEN** the feature MUST be excluded
+
+### Requirement: Aragón CartoFor active fires
+
+Aragón points MUST come from Worker `GET /aragon` (IDEAragon WFS `INCENDIOS_ACTIVOS`).
+Features with `esactivo=0` or coordinates outside Aragón MUST be excluded. Sparse metadata
+(id + point) is acceptable.
+
+#### Scenario: Keep active Aragón point
+
+- **GIVEN** a GeoJSON feature with `esactivo` 1 and WGS84 point in Aragón
+- **WHEN** `filterAragonRows` runs
+- **THEN** a fire with `source: "Aragón"` MUST be returned
+
 ### Requirement: Portugal fogos.pt open rural fires
 
 Portugal points MUST be loaded via the Worker proxy (not `api-lb.fogos.pt` from the browser).

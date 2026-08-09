@@ -24,7 +24,9 @@ test.describe("Leaflet Lockdown Mode fallback", () => {
     await expect(page.locator(".map-wrap")).toHaveClass(/is-leaflet/);
     await expect(page.locator(".leaflet-container")).toBeVisible();
     await expect(page.locator(".maplibregl-canvas")).toHaveCount(0);
-    await expect(page.locator("#ticker")).toContainText(/sin WebGL|CyL|sat|PT/i, { timeout: 30_000 });
+    await expect(page.locator("#ticker")).toContainText(/sin WebGL|incendio|sat|Actualizando/i, {
+      timeout: 30_000,
+    });
     expect(pageErrors).toEqual([]);
   });
 
@@ -32,8 +34,8 @@ test.describe("Leaflet Lockdown Mode fallback", () => {
     await page.goto("/");
     await expect(page.locator("#map.is-leaflet")).toBeVisible({ timeout: 30_000 });
     await expect(page.locator("#ticker")).not.toHaveText(/Cargando/i, { timeout: 30_000 });
-    await expect(page.locator("#ticker")).toContainText(/CyL/i, { timeout: 30_000 });
-    await expect(page.locator("#ticker")).toContainText(/PT/i);
+    await expect(page.locator("#ticker")).toContainText(/\d+\s+incendio/i, { timeout: 30_000 });
+    await expect(page.locator("#ticker")).toContainText(/\d+\s+sat/i);
 
     const FF = require("../../lib/fires.js");
     const reduced = FF.reduceJcylRows(jcylApiBody().results);
@@ -58,7 +60,7 @@ test.describe("Leaflet Lockdown Mode fallback", () => {
       })
       .toBeGreaterThan(0);
 
-    await page.locator("#btn-sheet").click();
+    // Desktop: sidebar is already open (sheet handle is mobile-only).
     await expect(page.locator(".region-card.is-firms")).toContainText(String(firmCount), {
       timeout: 15_000,
     });
@@ -101,7 +103,8 @@ test.describe("Leaflet Lockdown Mode fallback", () => {
     await page.goto("/");
     await expect(page.locator("#map.is-leaflet .map-marker").first()).toBeVisible({ timeout: 30_000 });
     const before = await page.locator(".map-marker").count();
-    await page.locator(".map-marker").first().click();
+    // Native click avoids Playwright hit-testing when Leaflet icons overlap.
+    await page.locator("#map.is-leaflet .map-marker").first().evaluate((el) => el.click());
     await expect(page.locator("#sidebar.is-detail")).toBeVisible();
     await expect(page.locator("article.card.is-selected .source-badge")).toHaveText(
       /Oficial|Aviso|Despacho/i
