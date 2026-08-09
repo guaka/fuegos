@@ -20,9 +20,9 @@
       --orange: #ff6e02;
       --orange-deep: #ff512f;
       --orange-soft: #f09819;
-      --ink: #333;
-      --ink-muted: #666;
-      --muted: #888;
+      --ink: #1c1917;
+      --ink-muted: #3f3a36;
+      --muted: #524a44;
       --line: rgba(0, 0, 0, 0.08);
       --bg: #f5f5f5;
       --card: #fff;
@@ -161,7 +161,7 @@
     .meta-line {
       margin: 0;
       font-size: 0.75rem;
-      color: var(--muted);
+      color: var(--ink-muted);
       padding: 0 0.15rem;
     }
 
@@ -208,9 +208,10 @@
 
     .legend-hint {
       margin: 0.15rem 0 0.65rem;
-      font-size: 0.72rem;
-      color: var(--muted);
+      font-size: 0.75rem;
+      color: var(--ink-muted);
       line-height: 1.35;
+      font-weight: 500;
     }
 
     .fire-list {
@@ -273,7 +274,7 @@
     .region-card.is-pt .region-name { color: #006600; }
     .region-head {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
       gap: 0.75rem;
     }
@@ -292,17 +293,19 @@
     .region-count strong { font-size: 1.15rem; font-weight: 700; }
     .region-meta {
       margin: 0.4rem 0 0;
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       color: var(--ink-muted);
       line-height: 1.4;
+      font-weight: 500;
     }
     .region-stats {
       display: flex;
       flex-wrap: wrap;
       gap: 0.35rem 0.75rem;
       margin-top: 0.55rem;
-      font-size: 0.72rem;
-      color: var(--muted);
+      font-size: 0.75rem;
+      color: var(--ink-muted);
+      font-weight: 500;
     }
     .region-stats b { color: var(--ink); font-weight: 700; }
 
@@ -310,9 +313,10 @@
       background: transparent;
       border: 0;
       padding: 0.35rem 0.15rem 0.15rem;
-      font-size: 0.78rem;
-      color: var(--muted);
+      font-size: 0.8rem;
+      color: var(--ink-muted);
       line-height: 1.4;
+      font-weight: 500;
     }
     .overview-note a { font-weight: 600; }
 
@@ -393,6 +397,64 @@
     .country-badge.es { background: #c60b1e; color: #fff; }
     .country-badge.pt { background: #006600; color: #fff; }
 
+    .card-badges {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.45rem;
+    }
+    .card-badges .status-pill { margin-bottom: 0; }
+    .card-badges .country-badge { margin-right: 0; }
+
+    .source-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      border-radius: 3px;
+      padding: 0.15rem 0.4rem;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .source-badge.oficial {
+      background: #1f4e79;
+      color: #fff;
+    }
+    .source-badge.aviso {
+      background: #1565c0;
+      color: #fff;
+    }
+    .source-badge.despacho {
+      background: #006600;
+      color: #fff;
+    }
+    .source-badge.sat {
+      background: #c2410c;
+      color: #fff;
+    }
+    .source-caveat {
+      margin: 0 0 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1.35;
+      color: var(--ink);
+      padding: 0.4rem 0.55rem;
+      border-left: 3px solid var(--orange);
+      background: rgba(255, 110, 2, 0.12);
+    }
+    .firms-popup .source-badge { margin-bottom: 0.35rem; }
+    .firms-popup .source-caveat {
+      display: block;
+      margin: 0.45rem 0 0;
+      font-style: normal;
+    }
+    .region-head .source-badge {
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
     .fields {
       display: grid;
       gap: 0.55rem;
@@ -434,7 +496,7 @@
     }
     .chart-tick {
       font-size: 9px;
-      fill: #888;
+      fill: #524a44;
     }
     .chart-legend {
       display: flex;
@@ -457,9 +519,10 @@
     }
     .chart-note, .chart-empty {
       margin: 0.35rem 0 0;
-      font-size: 0.72rem;
-      color: var(--muted);
+      font-size: 0.76rem;
+      color: var(--ink-muted);
       line-height: 1.35;
+      font-weight: 500;
     }
     .asset {
       display: inline-flex;
@@ -482,9 +545,10 @@
     .asset em {
       font-style: normal;
       font-size: 0.65rem;
-      color: var(--muted);
+      color: var(--ink-muted);
       text-transform: uppercase;
       letter-spacing: 0.03em;
+      font-weight: 600;
     }
 
     .empty, .error {
@@ -582,26 +646,26 @@
 
     .footnote {
       margin: 0.25rem 0 0;
-      font-size: 0.68rem;
-      color: var(--muted);
+      font-size: 0.72rem;
+      color: var(--ink-muted);
       line-height: 1.4;
       padding: 0 0.15rem 0.35rem;
+      font-weight: 500;
     }
     .footnote-warn,
     .about-hobby-warn {
       margin: 0.5rem 0 0;
-      font-size: 0.72rem;
+      font-size: 0.78rem;
       font-weight: 600;
-      color: var(--ink-muted);
+      color: var(--ink);
       line-height: 1.4;
       padding: 0.45rem 0.55rem;
       border-left: 3px solid var(--orange);
-      background: rgba(255, 110, 2, 0.08);
+      background: rgba(255, 110, 2, 0.12);
     }
     .about-hobby-warn {
       margin: 1rem 0 0;
-      font-size: 0.88rem;
-      font-weight: 400;
+      font-size: 0.9rem;
     }
 
     .map-marker {
@@ -815,9 +879,9 @@
         text-overflow: ellipsis;
       }
       .sheet-note {
-        font-size: 0.65rem;
-        font-weight: 600;
-        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 650;
+        color: var(--ink-muted);
         letter-spacing: 0.01em;
         line-height: 1.25;
         text-align: center;
@@ -940,6 +1004,7 @@
       max-width: 58ch;
       color: var(--ink-muted);
       font-size: 1.05rem;
+      font-weight: 500;
     }
     .about-hero p + p {
       margin-top: 0.85rem;
@@ -971,6 +1036,7 @@
     .about-sources p {
       color: var(--ink-muted);
       font-size: 0.95rem;
+      font-weight: 500;
     }
     .about-panel p { margin: 0 0 0.85rem; }
     .about-panel ul {
@@ -1014,8 +1080,8 @@
     }
     .about-foot-license {
       font-size: 0.82rem;
-      font-weight: 500;
-      color: var(--muted);
+      font-weight: 600;
+      color: var(--ink-muted);
       text-decoration: none;
     }
     .about-foot-license:hover {
@@ -1024,9 +1090,9 @@
     }
     .about-foot-build {
       font-size: 0.75rem;
-      font-weight: 500;
+      font-weight: 600;
       font-variant-numeric: tabular-nums;
-      color: var(--muted);
+      color: var(--ink-muted);
       letter-spacing: 0.01em;
     }
     .about-foot-build[datetime="__BUILD_ISO__"] {
@@ -1039,7 +1105,7 @@
       width: 2.5rem;
       height: 2.5rem;
       border-radius: 50%;
-      color: var(--muted);
+      color: var(--ink-muted);
       transition: color 0.15s ease, background 0.15s ease, transform 0.15s ease;
     }
     .about-gh:hover {

@@ -175,8 +175,21 @@ test.describe("Fuegos Vivos map e2e", () => {
     await page.locator(".map-marker").first().click();
     await expect(page.locator("#sidebar.is-detail")).toBeVisible();
     await expect(page.locator("article.card.is-selected")).toBeVisible();
+    await expect(page.locator("article.card.is-selected .source-badge")).toBeVisible();
+    await expect(page.locator("article.card.is-selected .source-badge")).toHaveText(
+      /Oficial|Aviso|Despacho/i
+    );
     const after = await page.locator(".map-marker").count();
     expect(after).toBe(before);
+  });
+
+  test("overview cards label source kind", async ({ page }) => {
+    await page.goto("/");
+    await page.locator("#btn-sheet").click();
+    await expect(page.locator(".region-card.is-firms .source-badge.sat")).toContainText(/Satélite/i, {
+      timeout: 30_000,
+    });
+    await expect(page.locator(".source-badge.oficial").first()).toBeVisible();
   });
 
   test("mobile map-first sheet peeks then expands", async ({ page }) => {

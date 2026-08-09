@@ -448,10 +448,13 @@
     const time = String(p.acq_time || "").padStart(4, "0");
     const hhmm = time.length >= 4 ? `${time.slice(0, 2)}:${time.slice(2, 4)}` : time;
     return `
-      <strong>Detección satélite</strong><br/>
-      ${escapeHtml(p.acq_date || "—")} ${escapeHtml(hhmm)} UTC<br/>
-      Confianza: ${escapeHtml(p.confidence || "—")} · FRP ${escapeHtml(String(p.frp ?? "—"))}<br/>
-      <em>No es un parte oficial de extinción</em>
+      <div class="firms-popup">
+        <span class="source-badge sat">Satélite · FIRMS</span>
+        <strong>Detección de calor VIIRS</strong><br/>
+        ${escapeHtml(p.acq_date || "—")} ${escapeHtml(hhmm)} UTC<br/>
+        Confianza: ${escapeHtml(p.confidence || "—")} · FRP ${escapeHtml(String(p.frp ?? "—"))}<br/>
+        <em class="source-caveat">No es un parte oficial de extinción. Contrasta con 112 / Protección Civil.</em>
+      </div>
     `;
   }
 
@@ -969,10 +972,11 @@
         fire.source === SOURCE.GALICIA ? " citizen" : ""
       }${fire.country === "PT" ? " pt" : ""}`;
       const medios = fire.man + fire.terrain + fire.aerial;
-      el.title = `${fire.locationLine} — ${fire.status} · parte ${formatRelativeParte(fire)} · ${medios} medios`;
+      const src = sourceBadgeMeta(fire);
+      el.title = `${src.titleTag} · ${fire.locationLine} — ${fire.status} · parte ${formatRelativeParte(fire)} · ${medios} medios`;
       el.setAttribute(
         "aria-label",
-        `${fire.municipality}, ${fire.status}, parte ${formatRelativeParte(fire)}, magnitud ${size.replace("size-", "")}`
+        `${src.label}, ${fire.municipality}, ${fire.status}, parte ${formatRelativeParte(fire)}`
       );
       el.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -1109,9 +1113,13 @@
     card.innerHTML = `
       <div class="fire-status ${fire.statusClass}"></div>
       <div class="card-body">
-        <span class="country-badge ${fire.country.toLowerCase()}">${fire.country}</span>
-        <span class="status-pill ${fire.statusClass}">${escapeHtml(fire.status)}</span>
+        <div class="card-badges">
+          <span class="country-badge ${fire.country.toLowerCase()}">${fire.country}</span>
+          ${sourceBadgeHtml(fire)}
+          <span class="status-pill ${fire.statusClass}">${escapeHtml(fire.status)}</span>
+        </div>
         <h3 class="card-title">${escapeHtml(fire.municipality)}</h3>
+        ${sourceCaveatHtml(fire)}
         <div class="fields">
           <div>
             <h6 class="field-label">Local</h6>
@@ -1145,17 +1153,7 @@
           </div>
           <div>
             <h6 class="field-label">Fuente</h6>
-            <p class="field-value">${
-              fire.source === SOURCE.GALICIA
-                ? fire.detailUrl
-                  ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">${SOURCE.GALICIA}</a> (avisos cidadáns)`
-                  : SOURCE.GALICIA
-                : fire.source === SOURCE.FOGOS
-                  ? fire.detailUrl
-                    ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">${SOURCE.FOGOS}</a> (ANEPC)`
-                    : SOURCE.FOGOS
-                  : `España · ${SOURCE.JCYL}`
-            }</p>
+            <p class="field-value">${sourceLinkHtml(fire)}</p>
           </div>
         </div>
         ${fire.source === SOURCE.GALICIA ? "" : assetBlock(fire)}
@@ -1175,9 +1173,9 @@
     btn.innerHTML = `
       <div class="region-head">
         <h3 class="region-name">España · satélite</h3>
-        <span class="region-count"><strong>${firmsCount}</strong> detección${firmsCount === 1 ? "" : "es"}</span>
+        <span class="source-badge sat">Satélite</span>
       </div>
-      <p class="region-meta">VIIRS 24h (NASA FIRMS) en todo el mapa — no son partes oficiales</p>
+      <p class="region-meta"><strong>${firmsCount}</strong> detección${firmsCount === 1 ? "" : "es"} VIIRS 24h (NASA FIRMS) — no son partes oficiales</p>
     `;
     btn.addEventListener("click", () => {
       if (els.layerFirms && !els.layerFirms.checked) {
@@ -1200,11 +1198,11 @@
     btn.innerHTML = `
       <div class="region-head">
         <h3 class="region-name">Galicia</h3>
-        <span class="region-count"><strong>${n}</strong> aviso${n === 1 ? "" : "s"}</span>
+        <span class="source-badge aviso">Aviso</span>
       </div>
       <p class="region-meta">${
         n
-          ? "Avisos cidadáns recientes (incendios.gal) — no oficiales"
+          ? `<strong>${n}</strong> aviso${n === 1 ? "" : "s"} cidadáns (incendios.gal) — no oficiales`
           : "Pulsa para acercar · avisos cidadáns + satélite"
       }</p>
     `;
@@ -1242,9 +1240,11 @@
       btn.innerHTML = `
         <div class="region-head">
           <h3 class="region-name">${escapeHtml(displayProvince(region.province))}</h3>
-          <span class="region-count"><strong>${region.total}</strong> en curso</span>
+          <span class="source-badge oficial">Oficial</span>
         </div>
-        <p class="region-meta">${escapeHtml(bits.join(" · ") || "Sin desglose")}</p>
+        <p class="region-meta"><strong>${region.total}</strong> en curso${
+          bits.length ? ` · ${escapeHtml(bits.join(" · "))}` : ""
+        }</p>
         <div class="region-stats">
           <span><b>${region.man}</b> operativos</span>
           <span><b>${region.terrain}</b> terrestres</span>
@@ -1280,11 +1280,11 @@
     summary.innerHTML = `
       <div class="region-head">
         <h3 class="region-name">Portugal</h3>
-        <span class="region-count"><strong>${ptFires.length}</strong> en curso</span>
+        <span class="source-badge despacho">Despacho</span>
       </div>
-      <p class="region-meta">${
-        activos ? `${activos} activos · ` : ""
-      }Despachos ANEPC vía fogos.pt — pulsa para ver todos</p>
+      <p class="region-meta"><strong>${ptFires.length}</strong> en curso${
+        activos ? ` · ${activos} activos` : ""
+      } · ANEPC vía fogos.pt</p>
     `;
     summary.addEventListener("click", () => {
       if (els.layerPortugal && !els.layerPortugal.checked) {
@@ -1308,9 +1308,9 @@
       btn.innerHTML = `
         <div class="region-head">
           <h3 class="region-name">${escapeHtml(region.province)}</h3>
-          <span class="region-count"><strong>${region.total}</strong></span>
+          <span class="source-badge despacho">PT</span>
         </div>
-        <p class="region-meta">${escapeHtml(
+        <p class="region-meta"><strong>${region.total}</strong> · ${escapeHtml(
           [
             region.activo && `${region.activo} activo${region.activo === 1 ? "" : "s"}`,
             region.controlado && `${region.controlado} en resolución`,
@@ -1411,6 +1411,60 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  /** Short provenance label for UI (oficial / aviso / despacho). */
+  function sourceBadgeMeta(fire) {
+    if (fire.source === SOURCE.GALICIA) {
+      return {
+        kind: "aviso",
+        label: "Aviso · incendios.gal",
+        short: "Aviso",
+        caveat: "Aviso colaborativo — no es un parte oficial de extinción.",
+        titleTag: "aviso incendios.gal",
+      };
+    }
+    if (fire.source === SOURCE.FOGOS) {
+      return {
+        kind: "despacho",
+        label: "Despacho · fogos.pt",
+        short: "Despacho",
+        caveat: "Despacho ANEPC vía fogos.pt — no sustituye canales oficiales ES.",
+        titleTag: "despacho fogos.pt",
+      };
+    }
+    return {
+      kind: "oficial",
+      label: "Oficial · JCyL",
+      short: "Oficial",
+      caveat: null,
+      titleTag: "oficial JCyL",
+    };
+  }
+
+  function sourceBadgeHtml(fire) {
+    const meta = sourceBadgeMeta(fire);
+    return `<span class="source-badge ${meta.kind}">${escapeHtml(meta.label)}</span>`;
+  }
+
+  function sourceCaveatHtml(fire) {
+    const meta = sourceBadgeMeta(fire);
+    if (!meta.caveat) return "";
+    return `<p class="source-caveat">${escapeHtml(meta.caveat)}</p>`;
+  }
+
+  function sourceLinkHtml(fire) {
+    if (fire.source === SOURCE.GALICIA) {
+      return fire.detailUrl
+        ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">${SOURCE.GALICIA}</a> (avisos cidadáns)`
+        : SOURCE.GALICIA;
+    }
+    if (fire.source === SOURCE.FOGOS) {
+      return fire.detailUrl
+        ? `<a href="${escapeHtml(fire.detailUrl)}" rel="noopener" target="_blank">${SOURCE.FOGOS}</a> (ANEPC)`
+        : SOURCE.FOGOS;
+    }
+    return `España · ${SOURCE.JCYL}`;
   }
 
   async function refresh() {
