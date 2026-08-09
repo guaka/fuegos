@@ -967,6 +967,10 @@
         text-overflow: ellipsis;
       }
       .sheet-note {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.28rem;
         font-size: 0.68rem;
         font-weight: 650;
         color: var(--ink-muted);
@@ -975,6 +979,13 @@
         text-align: center;
         max-width: 22rem;
         padding: 0 0.35rem;
+      }
+      .sheet-note-ico {
+        flex: none;
+        width: 0.78rem;
+        height: 0.78rem;
+        fill: currentColor;
+        opacity: 0.85;
       }
       /* Peek: only the handle — map stays dominant (fogos.pt-like) */
       .sidebar:not(.is-sheet-open) > :not(.sheet-handle) {
@@ -1225,6 +1236,9 @@
     }
 
     .about-hobby-warn {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
       margin: 1.15rem 0 0;
       font-size: 0.9rem;
       font-weight: 500;
@@ -1233,6 +1247,16 @@
       padding: 0.85rem 0.95rem;
       border-left: 3px solid var(--orange);
       background: rgba(255, 110, 2, 0.1);
+    }
+    .about-warn-ico {
+      flex: none;
+      width: 1.15rem;
+      height: 1.15rem;
+      margin-top: 0.12rem;
+      fill: var(--orange-deep);
+    }
+    .about-hobby-warn > span {
+      min-width: 0;
     }
 
     .about-foot {
@@ -1309,7 +1333,12 @@
       <button type="button" class="sheet-handle" id="btn-sheet" aria-expanded="false" aria-controls="fire-list">
         <span class="sheet-grip" aria-hidden="true"></span>
         <span class="sheet-label" id="sheet-label" data-i18n="sheet.list">Lista de incendios</span>
-        <span class="sheet-note" data-i18n="sheet.note">Experimental · consulta también fuentes oficiales</span>
+        <span class="sheet-note">
+          <svg class="sheet-note-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 4.2a1.35 1.35 0 1 1-1.35 1.35A1.35 1.35 0 0 1 12 6.2zM13.1 17h-2.2v-7h2.2z"/>
+          </svg>
+          <span data-i18n="sheet.note">Experimental · consulta también fuentes oficiales</span>
+        </span>
       </button>
       <div class="legend" aria-hidden="true">
         <span><i class="dot activo"></i> <span data-i18n="legend.active">Activo</span></span>
@@ -1323,7 +1352,7 @@
         ·
         <a href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a>
         ·
-        <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>
+        <a href="https://github.com/guaka/fuegos/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>
       </p>
       <p class="footnote-warn" data-i18n="foot.warn">
         Aviso: software experimental de aficionado. No es un servicio oficial de emergencias;
@@ -1460,12 +1489,17 @@
           <li><a href="https://forest-fire.emergency.copernicus.eu/" rel="noopener">EFFIS / Copernicus</a> + NASA FIRMS<span> — satélite</span></li>
           <li><a href="https://fogos.pt" rel="noopener">fogos.pt</a><span> — despachos Portugal</span></li>
           <li><a href="https://github.com/guaka/fuegos/blob/main/DATA.md" rel="noopener">DATA.md</a><span> — inventario detallado</span></li>
-          <li><a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a><span> — el código es software livre</span></li>
+          <li><a href="https://github.com/guaka/fuegos/blob/main/LICENSE" rel="noopener">AGPL-3.0</a><span> — el código es software livre</span></li>
         </ul>
-        <p class="about-hobby-warn" data-i18n-html="about.hobbyWarn">
-          <strong>Aviso:</strong> software experimental de aficionado. No es un servicio oficial
-          de emergencias; no sustituye a 112 / Protección Civil. Los datos pueden estar
-          incompletos o desactualizados.
+        <p class="about-hobby-warn" role="note">
+          <svg class="about-warn-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+          </svg>
+          <span data-i18n-html="about.hobbyWarn">
+            <strong>Aviso:</strong> software experimental de aficionado. No es un servicio oficial
+            de emergencias; no sustituye a 112 / Protección Civil. Los datos pueden estar
+            incompletos o desactualizados.
+          </span>
         </p>
       </section>
 

@@ -16,9 +16,10 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 | [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) VIIRS Europe CSV | Europa → filtrado ES | Hotspots satélite (puntos) | Sí (24h) | **No** (CORS) | **Sí** — vía proxy Worker `/firms` (+ fallback `data/firms.geojson`) | Suomi-NPP + NOAA-20 + NOAA-21; confianza nominal/high; cluster ~0.02° |
 | [fogos.pt](https://fogos.pt) / `api-lb.fogos.pt` | Portugal | Despachos ANEPC (JSON) | Sí | **No** (CORS) desde github.io | **Sí** — vía proxy Worker `/fires` (+ fallback `data/fires.json`) | Naturaleza `31xx`; excluye Conclusão/Encerrada |
 | FIDIAS (C-LM) HTML | Castilla-La Mancha | HTML listado | Sí | Scrape | **No** (supersedido) | Sustituido por FeatureServer INFOCAM |
-| 112CV mapas | C. Valenciana | JSF / emergencias | Sí | Opaco | **No** (candidato) | Reverse-engineer; peers lo usan |
-| EUMETSAT SEVIRI FRP | España | Satélite geoestacionario 15 min | Sí | Server | **No** (candidato) | Rellena huecos entre pases VIIRS |
-| [ppetru/incidents-pt](https://github.com/ppetru/incidents-pt) | Portugal | Espejo scrape ANEPC → JSON en GitHub | ~horario | Sí (raw GitHub) | No (candidato) | Incluye todos los incidentes; filtrar incendios (`Natureza` 31xx) |
+| 112CV GeoServer | C. Valenciana | Incidentes en curso | Sí (mapa) | Worker | **No** (candidato #1) | Diseño listo; OWS deshabilitado — ver [`data/REGIONAL.md`](./data/REGIONAL.md) |
+| EUMETSAT LSA-SAF FRP | España | Satélite geoestacionario | Sí | GFI / WMS | **No** (candidato sat) | GFI JSON OK; sin dump masivo de puntos |
+| Espejos terceros “CV112” | C. Valenciana | API no oficial | Sí | Variable | **No usar** | No es GVA; frágil / no provenance |
+| [ppetru/incidents-pt](https://github.com/ppetru/incidents-pt) | Portugal | Espejo scrape ANEPC → JSON en GitHub | ~horario | Sí (raw GitHub) | No (fallback) | Incluye todos los incidentes; filtrar incendios (`Natureza` 31xx) |
 | ICNF `fogos.icnf.pt` webservice | Portugal | Inventario/rural (XML grande) | Histórico / pesado | Variable | No | ~MB de XML; mal encaje para SPA en vivo |
 | ANEPC / prociv ArcGIS | Portugal | Oficial GIS | Sí | A menudo **no** | No | Auth / CORS hostiles para SPA |
 | [EGIF / MITECO](https://www.miteco.gob.es/es/biodiversidad/temas/incendios-forestales/estadisticas-datos.html) | España | Estadística consolidada (partes anuales) | No (histórico) | N/A (buscador/XML) | No | Base nacional de referencia; no feed diario de operaciones |
@@ -86,7 +87,28 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 - **Qué usamos:** incendios rurales abiertos (`naturezaCode` 31xx) con coordenadas; sin Conclusão/Encerrada.
 - **En el mapa:** marcadores PT (borde verde) + resumen por distrito en el panel.
 
-## Evaluadas / no integradas (aún)
+## Evaluadas / no integradas
+
+Detalle de candidatos y **qué no usar**: [`data/REGIONAL.md`](./data/REGIONAL.md).
+
+### Mirar más adelante
+
+| Fuente | Por qué interesa | Bloqueo actual |
+|--------|------------------|----------------|
+| **112 Comunitat Valenciana** GeoServer `V_INCIDENTES_CURSO` | Incidentes en curso con municipio / descripción; diseño Worker `/cv112` ya documentado | WMS/WFS deshabilitados en GeoServer (2026-08-09) |
+| **LSA-SAF MSG-FRP** (EUMETSAT / IPMA) | FRP geoestacionario entre pases VIIRS; GFI JSON con CORS `*` | No hay FeatureCollection masivo (solo GFI / teselas) |
+| **incidents-pt** (GitHub) | Fallback PT si cae fogos.pt | Tercero; filtrar natureza 31xx |
+| Madrid / Extremadura FeatureServers “campaña” | Si publican capa de **estado abierto**, no solo perímetros | Hoy: historial / riesgo / polígonos de campaña |
+
+### No usar (resumen)
+
+- Espejos de terceros que “reenvían” 112CV u otros CCAA (no oficiales, frágiles).
+- Capas de **riesgo** (ZAR, FWI, ZARI) o **perímetros históricos** (ICV, Navarra Hco, EGIF).
+- Scrapes HTML (FIDIAS, INFOEX visor) cuando exista o pueda existir un FeatureServer/WFS.
+- PDFs diarios MITECO / EGIF como si fueran un feed de operaciones.
+- Duplicar FIRMS/EFFIS vía datasets de datos.gob.es.
+
+Hasta que haya otra fuente abierta usable, el resto de España se cubre con **FIRMS** (puntos) y opcionalmente **EFFIS** (teselas).
 
 ### Portugal sin fogos.pt
 
@@ -95,16 +117,6 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 | Espejo [incidents-pt](https://github.com/ppetru/incidents-pt) | CORS vía GitHub raw; actualiza a menudo | Tercero; hay que filtrar tipo incendio; no es ANEPC “oficial” directo |
 | ICNF XML | Oficial ICNF | Volumen enorme; modelo inventarial |
 | ArcGIS ANEPC/prociv | Oficial | CORS / acceso poco amigable para SPA |
-
-### Resto de España (partes oficiales)
-
-No hay un feed nacional **diario** abierto tipo “todos los incendios activos con coordenadas y medios”.
-
-- **EGIF (MITECO):** consolidación estadística; no mapa operativo en vivo.
-- **CCAA:** casi ninguna ofrece JSON de partes activos con CORS comparable al de JCyL.
-
-Hasta que exista otra fuente abierta usable en el navegador, el resto de España se cubre con **FIRMS** (puntos) y opcionalmente **EFFIS** (teselas).
-
 ## Cómo se combina en el mapa
 
 ```text
@@ -138,8 +150,9 @@ Hasta que exista otra fuente abierta usable en el navegador, el resto de España
 | Proxy Worker | https://fuegos-proxy.crew.workers.dev/ |
 | EGIF / MITECO | https://www.miteco.gob.es/es/biodiversidad/temas/incendios-forestales/estadisticas-datos.html |
 | incidents-pt | https://github.com/ppetru/incidents-pt |
+| Backlog CCAA | [data/REGIONAL.md](./data/REGIONAL.md) |
 | Código de esta app | https://github.com/guaka/fuegos |
 
 ## Actualizar este documento
 
-Si se añade una CCAA u otra fuente PT, actualizar la tabla del resumen y la sección correspondiente, y mencionar el cambio en [`README.md`](./README.md) y la vista Sobre (`#about` en [`index.html`](./index.html)).
+Si se añade una CCAA u otra fuente PT, actualizar la tabla del resumen y la sección correspondiente, mencionar el cambio en [`README.md`](./README.md) y la vista Sobre (`#about` en [`index.html`](./index.html)), y mover la entrada en [`data/REGIONAL.md`](./data/REGIONAL.md) de “Look into later” a “Live now” (o a “Do not use” si se descarta).

@@ -7,8 +7,9 @@ Sitio estático (`index.html` + `index.js`). Sin build. Licencia **AGPL-3.0**.
 ## Datos
 
 Resumen corto; detalle y comparación en **[DATA.md](./DATA.md)** (tablas de fuentes).
+Backlog CCAA — qué mirar / qué no usar: **[data/REGIONAL.md](./data/REGIONAL.md)**.
 
-- **Oficiales en vivo:** [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL) — Castilla y León.
+- **Oficiales en vivo:** [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL) — Castilla y León; más Bombers CAT, INFOCA, INFOCAM, Aragón.
 - **Galicia:** avisos cidadáns [incendios.gal](https://incendios.gal/).
 - **Resto de España:** detecciones [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) (vía proxy) + [EFFIS](https://forest-fire.emergency.copernicus.eu/) opcional.
 - **Portugal:** despachos [fogos.pt](https://fogos.pt) vía Cloudflare Worker (`/fires`).
@@ -19,7 +20,7 @@ La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas.
 
 - [`index.html`](./index.html) — mapa en vivo + Sobre (`#about`)
 - [`DATA.md`](./DATA.md) — fuentes de datos (tablas)
-
+- [`data/REGIONAL.md`](./data/REGIONAL.md) — candidatos futuros y fuentes a evitar
 ```bash
 python3 -m http.server 8080
 ```
