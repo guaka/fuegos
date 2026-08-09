@@ -14,6 +14,7 @@
   const JCYL_URL =
     "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records";
   const FOGOS_PT_URL = "https://api-lb.fogos.pt/new/fires";
+  const FOGOS_PT_LOCAL = "./data/pt-fires.json";
   const EFFIS_WMS = "https://maps.effis.emergency.copernicus.eu/effis";
 
   /** Portuguese districts near León / Salamanca / Badajoz. */
@@ -327,13 +328,28 @@
   }
 
   async function fetchFogosPtFires() {
-    const res = await fetch(FOGOS_PT_URL, {
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) throw new Error(`fogos.pt HTTP ${res.status}`);
-    const data = await res.json();
+    // Live fogos.pt API often omits ACAO for browser Origins (e.g. GitHub Pages).
+    // Prefer same-origin snapshot published by the Pages workflow; fall back to live.
+    const data = await fetchFogosPtJson();
     const rows = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
     return rows.filter(isFogosPtInScope).map(normalizeFogosPt).sort(compareFires);
+  }
+
+  async function fetchFogosPtJson() {
+    const errors = [];
+    for (const url of [FOGOS_PT_LOCAL, FOGOS_PT_URL]) {
+      try {
+        const res = await fetch(url, {
+          headers: { Accept: "application/json" },
+          cache: url === FOGOS_PT_LOCAL ? "no-cache" : "default",
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } catch (err) {
+        errors.push(`${url}: ${err && err.message ? err.message : err}`);
+      }
+    }
+    throw new Error(errors.join(" | "));
   }
 
   function compareFires(a, b) {
