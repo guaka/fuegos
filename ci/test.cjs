@@ -107,7 +107,7 @@ async function main() {
     const html = read("index.html");
     for (const needle of [
       'id="about"',
-      "De dónde salen los datos",
+      "De dónde salen",
       "Castilla y León",
       "toda España",
       "FIRMS",
@@ -116,6 +116,7 @@ async function main() {
       "software experimental de aficionado",
       "par de horas",
       'href="#about"',
+      "about-to-map",
     ]) {
       assert.ok(html.includes(needle), `missing ${needle}`);
     }
@@ -158,6 +159,11 @@ async function main() {
       "maps.effis.emergency.copernicus.eu",
       "fuegos-proxy.crew.workers.dev",
       "PROXY_ORIGIN",
+      "FIRMS_FALLBACK_URL",
+      "FOGOS_FALLBACK_URL",
+      "fetchJsonWithFallback",
+      "./data/firms.geojson",
+      "./data/fires.json",
       "/firms",
       "/fires",
       "SOURCE",
