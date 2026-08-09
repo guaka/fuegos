@@ -144,13 +144,14 @@ async function main() {
     for (const needle of [
       "Regiones cubiertas",
       "Castilla y León",
-      "Andalucía",
       "Galicia",
-      "Cataluña",
-      "Extremadura",
-      "Baleares",
-      "Canarias",
-      "toda España",
+      "Asturias",
+      "Cantabria",
+      "País Vasco",
+      "Navarra",
+      "La Rioja",
+      "incendios.gal",
+      "norte de España",
       "coverage-map",
       "./about.js",
       "fogos.pt",
@@ -161,7 +162,7 @@ async function main() {
     assert.ok(js.includes("BBOX"));
     assert.ok(js.includes("maplibregl"));
     assert.ok(js.includes("fitBounds"));
-    assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"));
+    assert.ok(js.includes("[-9.4, 41.0, -0.6, 43.9]"));
   });
 
   test("HTML has core UI hooks", () => {
@@ -173,7 +174,9 @@ async function main() {
       'id="sidebar"',
       'id="ticker"',
       'id="layer-oficiales"',
+      'id="layer-galicia"',
       "fogos.pt",
+      "incendios.gal",
       "./index.js",
       "maplibre-gl",
       "AGPL",
@@ -184,18 +187,16 @@ async function main() {
     }
   });
 
-  test("index.js wires ES + EFFIS sources (no fogos.pt API)", () => {
+  test("index.js wires ES + Galicia + EFFIS sources (no fogos.pt API)", () => {
     const js = read("index.js");
     for (const needle of [
       "analisis.datosabiertos.jcyl.es",
+      "incendios.gal/api/incidencias",
       "maps.effis.emergency.copernicus.eu",
       "parseResources",
       "fetchJcylFires",
-      "ZAMORA",
-      "ÁVILA",
-      "VALLADOLID",
-      "BURGOS",
-      "SORIA",
+      "fetchGaliciaFires",
+      "NORTH_REGIONS",
       "OFFICIAL_PROVINCES",
       "LEÓN",
       "SALAMANCA",
@@ -209,8 +210,7 @@ async function main() {
     ]) {
       assert.ok(js.includes(needle), `missing ${needle}`);
     }
-    assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"), "default Spain bbox");
-    assert.ok(!js.includes("FOCUS_PROVINCES"), "renamed to OFFICIAL_PROVINCES");
+    assert.ok(js.includes("[-9.4, 41.0, -0.6, 43.9]"), "default north Spain bbox");
     assert.ok(!js.includes("api-lb.fogos.pt"), "must not call fogos.pt API from the browser");
     assert.ok(!js.includes("fetchFogosPtFires"), "must not fetch fogos.pt fires");
     assert.ok(
@@ -226,6 +226,7 @@ async function main() {
       "| Fuente |",
       "JCyL",
       "EFFIS",
+      "incendios.gal",
       "fogos.pt",
       "EGIF",
       "incidents-pt",
@@ -293,6 +294,26 @@ async function main() {
     assert.ok(html.includes(".map-marker.is-selected"));
     assert.ok(html.includes("legend-hint"));
     assert.ok(html.includes("recency-stale"));
+    assert.ok(html.includes("Resumen por provincia") || html.includes("Resumen por región"));
+  });
+
+  test("sidebar renders region overview helpers", () => {
+    const js = read("index.js");
+    assert.ok(js.includes("renderSidebar"));
+    assert.ok(js.includes("renderRegionOverview"));
+    assert.ok(js.includes("renderFireDetail"));
+    assert.ok(js.includes("regionStats"));
+    assert.ok(!js.includes("function renderList("));
+  });
+
+  test("map stays north-up (no rotate)", () => {
+    const js = read("index.js");
+    assert.ok(js.includes("dragRotate: false"));
+    assert.ok(js.includes("disableRotation"));
+    assert.ok(js.includes("bearing: 0"));
+    const html = read("index.html");
+    assert.ok(html.includes('id="btn-recenter"'));
+    assert.ok(/Centrar/.test(html));
   });
 
   test("extinguished and stale fires are excluded", () => {
@@ -303,16 +324,15 @@ async function main() {
     assert.ok(!isExtinguished({ fecha_extinguido: "09:59" })); // time-only junk
   });
 
-  test("focus bbox covers Spain sample points", () => {
-    const bbox = [-9.5, 35.95, 4.45, 43.85];
-    assert.ok(inFocusBbox(42.721508, -5.951445, bbox)); // León
-    assert.ok(inFocusBbox(41.65, -4.73, bbox)); // Valladolid
-    assert.ok(inFocusBbox(39.48, -6.37, bbox)); // Cáceres
-    assert.ok(inFocusBbox(37.39, -5.99, bbox)); // Sevilla
-    assert.ok(inFocusBbox(41.39, 2.17, bbox)); // Barcelona
-    assert.ok(inFocusBbox(39.57, 2.65, bbox)); // Palma
+  test("focus bbox covers northern Spain sample points", () => {
+    const bbox = [-9.4, 41.0, -0.6, 43.9];
     assert.ok(inFocusBbox(42.88, -8.54, bbox)); // Santiago
-    assert.ok(!inFocusBbox(28.1, -15.4, bbox)); // Canarias — fuera de la vista por defecto
+    assert.ok(inFocusBbox(43.36, -5.84, bbox)); // Oviedo
+    assert.ok(inFocusBbox(43.26, -2.93, bbox)); // Bilbao
+    assert.ok(inFocusBbox(42.81, -1.64, bbox)); // Pamplona
+    assert.ok(inFocusBbox(42.721508, -5.951445, bbox)); // León
+    assert.ok(!inFocusBbox(37.39, -5.99, bbox)); // Sevilla — south of default focus
+    assert.ok(!inFocusBbox(28.1, -15.4, bbox)); // Canarias
   });
 
   await testAsync("JCyL API responds", async () => {
@@ -333,6 +353,16 @@ async function main() {
     const data = await res.json();
     assert.ok(Array.isArray(data.results));
     assert.ok(typeof data.total_count === "number");
+  });
+
+  await testAsync("incendios.gal API responds", async () => {
+    const res = await fetch("https://incendios.gal/api/incidencias?data=30d", {
+      headers: { Accept: "application/json" },
+    });
+    assert.strictEqual(res.status, 200);
+    assert.ok(res.headers.get("access-control-allow-origin"));
+    const data = await res.json();
+    assert.ok(Array.isArray(data));
   });
 
   await testAsync("EFFIS WMS returns PNG", async () => {

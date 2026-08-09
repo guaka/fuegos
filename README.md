@@ -1,6 +1,6 @@
 # Fuegos Vivos
 
-Mapa público de incendios en **España** (península y Baleares; Canarias navegable), al estilo de [fogos.pt](https://fogos.pt).
+Mapa público de incendios con foco en el **norte de España** (Galicia, cornisa cantábrica y Castilla y León), al estilo de [fogos.pt](https://fogos.pt).
 
 Sitio estático (`index.html` + `index.js`). Sin build. Licencia **AGPL-3.0**.
 
@@ -8,8 +8,9 @@ Sitio estático (`index.html` + `index.js`). Sin build. Licencia **AGPL-3.0**.
 
 Resumen corto; detalle y comparación en **[DATA.md](./DATA.md)** (tablas de fuentes).
 
-- **Oficiales en vivo:** [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL) — Castilla y León, solo partes en curso (sin extinción, parte reciente).
-- **Resto de España:** capas WMS [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) (detecciones satélite, no despachos). No hay un feed nacional abierto diario comparable.
+- **Oficiales en vivo:** [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL) — Castilla y León, solo partes en curso.
+- **Galicia:** avisos cidadáns [incendios.gal](https://incendios.gal/) (no oficiales; API con CORS).
+- **Resto del norte / España:** capas WMS [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/).
 - **Portugal:** enlace a [fogos.pt](https://fogos.pt).
 
 La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas.

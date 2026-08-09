@@ -2,24 +2,20 @@
 (function () {
   "use strict";
 
-  // Keep in sync with FOCUS.bbox in index.js (península + Baleares)
-  const BBOX = [-9.5, 35.95, 4.45, 43.85]; // west,south,east,north
-  const CENTER = [-3.7, 40.0];
+  // Keep in sync with FOCUS.bbox in index.js (norte: Galicia → Navarra)
+  const BBOX = [-9.4, 41.0, -0.6, 43.9]; // west,south,east,north
+  const CENTER = [-5.8, 42.55];
 
   const PLACES = [
     { name: "Santiago", country: "ES", lng: -8.54, lat: 42.88 },
+    { name: "Ourense", country: "ES", lng: -7.86, lat: 42.34 },
     { name: "Oviedo", country: "ES", lng: -5.84, lat: 43.36 },
+    { name: "Santander", country: "ES", lng: -3.81, lat: 43.46 },
     { name: "Bilbao", country: "ES", lng: -2.93, lat: 43.26 },
+    { name: "Pamplona", country: "ES", lng: -1.64, lat: 42.81 },
+    { name: "Logroño", country: "ES", lng: -2.45, lat: 42.46 },
     { name: "León", country: "ES", lng: -5.57, lat: 42.6 },
-    { name: "Zaragoza", country: "ES", lng: -0.88, lat: 41.65 },
-    { name: "Barcelona", country: "ES", lng: 2.17, lat: 41.39 },
-    { name: "Madrid", country: "ES", lng: -3.7, lat: 40.42 },
-    { name: "Valencia", country: "ES", lng: -0.38, lat: 39.47 },
-    { name: "Palma", country: "ES", lng: 2.65, lat: 39.57 },
-    { name: "Badajoz", country: "ES", lng: -6.97, lat: 38.88 },
-    { name: "Sevilla", country: "ES", lng: -5.99, lat: 37.39 },
-    { name: "Murcia", country: "ES", lng: -1.13, lat: 37.99 },
-    { name: "Málaga", country: "ES", lng: -4.42, lat: 36.72 },
+    { name: "Burgos", country: "ES", lng: -3.7, lat: 42.34 },
     { name: "Bragança", country: "PT", lng: -6.76, lat: 41.81 },
   ];
 
@@ -94,9 +90,17 @@
       },
       center: CENTER,
       zoom: 5.2,
+      bearing: 0,
+      pitch: 0,
+      maxPitch: 0,
+      dragRotate: false,
+      touchPitch: false,
       interactive: true,
       attributionControl: true,
     });
+
+    map.dragRotate.disable();
+    map.touchZoomRotate.disableRotation();
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 

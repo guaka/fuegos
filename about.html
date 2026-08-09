@@ -8,7 +8,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Sobre Fuegos Vivos — cobertura en toda España (oficial CyL + satélite)." />
+  <meta name="description" content="Sobre Fuegos Vivos — foco en el norte de España (Galicia, Cornisa, CyL)." />
   <title>Sobre — Fuegos Vivos</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -273,9 +273,11 @@
     <section class="hero">
       <h1>Sobre Fuegos Vivos</h1>
       <p>
-        Mapa público de incendios en <strong>toda España</strong> (península y Baleares;
-        Canarias alcanzable al navegar). Partes oficiales en vivo donde hay API abierta
-        (hoy: Castilla y León); el resto con detecciones satélite EFFIS/Copernicus.
+        Mapa público de incendios con foco en el <strong>norte de España</strong>:
+        Galicia, Asturias, Cantabria, País Vasco, Navarra, La Rioja y Castilla y León.
+        Partes oficiales (JCyL), avisos cidadáns en Galicia
+        (<a href="https://incendios.gal/" rel="noopener">incendios.gal</a>)
+        y satélite EFFIS en el resto. Puedes navegar por toda la península.
         Inspirado en <a href="https://fogos.pt" rel="noopener">fogos.pt</a>.
       </p>
     </section>
@@ -284,10 +286,8 @@
       <section class="panel" aria-labelledby="coverage-title">
         <h2 id="coverage-title">Regiones cubiertas</h2>
         <p>
-          El mapa cubre todas las comunidades autónomas de la península y Baleares.
-          No hay un único feed oficial de despachos para toda España en abierto:
-          cada CCAA publica (o no) a su manera. Por eso combinamos lo que sí es
-          usable desde el navegador.
+          La vista por defecto cubre la cornisa cantábrica y el noroeste.
+          No hay un único feed oficial de despachos para toda España en abierto.
         </p>
         <ul>
           <li>
@@ -297,18 +297,27 @@
             Partes oficiales en curso de la Junta (JCyL).
           </li>
           <li>
+            <span class="badge es">ES</span>
+            <strong>Galicia</strong> —
+            avisos colaborativos de
+            <a href="https://incendios.gal/" rel="noopener">incendios.gal</a>
+            (no oficiales; CORS abierto). Lume/fume/queimada recientes.
+          </li>
+          <li>
+            <span class="badge sat">SAT</span>
+            <strong>Resto del norte</strong> —
+            Asturias, Cantabria, País Vasco, Navarra y La Rioja vía EFFIS
+            (sin parte diario abierto comparable).
+          </li>
+          <li>
             <span class="badge sat">SAT</span>
             <strong>Resto de España</strong> —
-            Galicia, Asturias, Cantabria, País Vasco, Navarra, La Rioja, Aragón,
-            Cataluña, Comunitat Valenciana, Murcia, Andalucía, Extremadura,
-            Madrid, Castilla-La Mancha, Baleares (y Canarias al desplazarte).
-            Hotspots y área quemada EFFIS/Copernicus — detecciones, no despachos.
+            navegable; hotspots EFFIS. Canarias al desplazarte.
           </li>
           <li>
             <span class="badge pt">PT</span>
             <strong>Portugal</strong> —
-            enlace a <a href="https://fogos.pt" rel="noopener">fogos.pt</a>
-            (aún sin fuente PT en vivo en el navegador).
+            enlace a <a href="https://fogos.pt" rel="noopener">fogos.pt</a>.
           </li>
         </ul>
       </section>
@@ -331,13 +340,13 @@
       <p>
         Datos oficiales CyL:
         <a href="https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/" rel="noopener">incendios-forestales</a>.
-        Resto de España (satélite):
+        Galicia (cidadán):
+        <a href="https://incendios.gal/" rel="noopener">incendios.gal</a>.
+        Satélite:
         <a href="https://forest-fire.emergency.copernicus.eu/" rel="noopener">EFFIS / Copernicus EMS</a>.
         Portugal (enlace):
         <a href="https://fogos.pt" rel="noopener">fogos.pt</a>.
         EGIF/MITECO es histórico consolidado, no un feed diario usable aquí.
-        Otras CCAA suelen publicar riesgo o perímetros históricos (WMS/WFS/ArcGIS)
-        sin un parte en vivo CORS-friendly comparable al de JCyL.
         Inventario detallado:
         <a href="https://github.com/guaka/fuegos/blob/main/DATA.md" rel="noopener">DATA.md</a>.
       </p>

@@ -8,7 +8,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Fuegos Vivos — mapa de incendios en España (partes CyL + satélite EFFIS)." />
+  <meta name="description" content="Fuegos Vivos — mapa de incendios en el norte de España (CyL, Galicia y satélite)." />
   <title>Fuegos Vivos</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -192,8 +192,134 @@
       padding: 0;
       display: flex;
       flex-direction: column;
-      gap: 0.65rem;
+      gap: 0.55rem;
     }
+    .sidebar.is-detail .legend,
+    .sidebar.is-detail .legend-hint,
+    .sidebar.is-detail .sidebar-tools {
+      display: none;
+    }
+
+    .panel-title {
+      margin: 0 0 0.35rem;
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+    }
+
+    .region-card {
+      background: var(--card);
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      border: 0;
+      width: 100%;
+      text-align: left;
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      color: inherit;
+      transition: box-shadow 0.2s ease, transform 0.15s ease;
+      animation: rise 0.35s ease both;
+    }
+    .region-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+    .region-card.is-empty {
+      cursor: default;
+      opacity: 0.72;
+    }
+    .region-card.is-empty:hover {
+      transform: none;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+    .region-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .region-name {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--orange);
+    }
+    .region-count {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .region-count strong { font-size: 1.15rem; font-weight: 700; }
+    .region-meta {
+      margin: 0.4rem 0 0;
+      font-size: 0.78rem;
+      color: var(--ink-muted);
+      line-height: 1.4;
+    }
+    .region-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.75rem;
+      margin-top: 0.55rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .region-stats b { color: var(--ink); font-weight: 700; }
+
+    .overview-note {
+      background: transparent;
+      border: 0;
+      padding: 0.35rem 0.15rem 0.15rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .overview-note a { font-weight: 600; }
+
+    .hit-card {
+      background: var(--card);
+      border-radius: 0.45rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      border: 0;
+      width: 100%;
+      text-align: left;
+      padding: 0.7rem 0.9rem;
+      cursor: pointer;
+      color: inherit;
+    }
+    .hit-card:hover { box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1); }
+    .hit-title {
+      margin: 0.2rem 0 0;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--orange);
+    }
+    .hit-sub {
+      margin: 0.15rem 0 0;
+      font-size: 0.8rem;
+      color: var(--ink-muted);
+    }
+
+    .detail-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.65rem;
+      border: 0;
+      background: transparent;
+      color: var(--orange);
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 0;
+    }
+    .detail-back:hover { text-decoration: underline; }
+
     .card {
       background: var(--card);
       border-radius: 0.5rem;
@@ -203,16 +329,12 @@
       width: 100%;
       text-align: left;
       padding: 0;
-      cursor: pointer;
       color: inherit;
-      transition: box-shadow 0.2s ease, transform 0.15s ease;
       animation: rise 0.4s ease both;
     }
-    .card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
     .card.is-selected {
       background: #fff8f3;
       box-shadow: 0 0 0 2px var(--orange), 0 6px 18px rgba(255, 110, 2, 0.22);
-      transform: translateY(-1px);
     }
     .card.is-selected .card-title {
       color: var(--orange-deep);
@@ -431,6 +553,9 @@
     .map-marker.controlado { background: var(--status-controlado); }
     .map-marker.estabilizado { background: var(--status-estabilizado); }
     .map-marker.conclusao { background: var(--status-conclusao); }
+    .map-marker.citizen {
+      box-shadow: 0 0 0 2px #1565c0, 0 1px 4px rgba(0, 0, 0, 0.35);
+    }
     .map-marker.is-selected {
       z-index: 5;
       transform: translate(-50%, -50%) scale(1.12);
@@ -506,13 +631,13 @@
     <div class="top-actions">
       <a class="top-btn" href="./about.html">Sobre</a>
       <a class="top-btn" href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a>
-      <button type="button" class="top-btn" id="btn-toggle-list">Lista</button>
-      <button type="button" class="top-btn" id="btn-recenter">Mapa</button>
+      <button type="button" class="top-btn" id="btn-toggle-list">Panel</button>
+      <button type="button" class="top-btn" id="btn-recenter" title="Vista norte · centrar mapa" aria-label="Centrar mapa al norte">Centrar</button>
     </div>
   </header>
 
   <div class="layout">
-    <aside class="sidebar" id="sidebar" aria-label="Listado de incendios">
+    <aside class="sidebar" id="sidebar" aria-label="Resumen por región">
       <div class="sidebar-tools">
         <input class="search" id="search" type="search" placeholder="Buscar municipio o provincia…" autocomplete="off" />
       </div>
@@ -522,10 +647,11 @@
         <span><i class="dot controlado"></i> Controlado</span>
         <span><i class="dot estabilizado"></i> Estabilizado</span>
       </div>
-      <p class="legend-hint">Mapa de España: puntos oficiales CyL en curso; el resto vía satélite EFFIS. Tamaño = magnitud; opacidad = lo reciente del parte.</p>
+      <p class="legend-hint">Norte: Galicia (avisos cidadáns) + CCAA vía satélite; CyL con partes oficiales. Pulsa un punto del mapa para el detalle.</p>
       <ul class="fire-list" id="fire-list"></ul>
       <p class="footnote">
-        ES: partes oficiales en curso de Castilla y León (JCyL). Resto de España: EFFIS/Copernicus (detecciones, no despachos).
+        ES: partes JCyL (CyL) + avisos cidadáns <a href="https://incendios.gal/" rel="noopener" target="_blank">incendios.gal</a> (Galicia).
+        Norte y resto: EFFIS/Copernicus.
         Portugal: ver <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a>.
         <a href="./about.html">Sobre la cobertura</a> ·
         <a href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a> ·
@@ -542,6 +668,7 @@
         </div>
         <div class="layers-body">
           <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> Oficiales CyL (ES)</label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-galicia" checked /> Galicia (incendios.gal)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-hotspots" checked /> Hotspots satélite</label>
           <label class="layer-item"><input type="checkbox" id="layer-burned" /> Área quemada</label>
           <label class="layer-item"><input type="checkbox" id="layer-satellite" /> Vista satélite</label>
