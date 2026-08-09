@@ -26,7 +26,7 @@ jobs:
       - name: Stage site
         run: |
           set -euo pipefail
-          mkdir -p _site/lib
+          mkdir -p _site/lib _site/data
           cp index.html index.js about.html favicon.svg LICENSE README.md _site/
           cp lib/fires.js _site/lib/
           touch _site/.nojekyll
@@ -35,7 +35,23 @@ jobs:
           sed -i "s|__BUILD_ISO__|${BUILD_ISO}|g; s|__BUILD_TIME__|${BUILD_TIME}|g" _site/index.html
           grep -q "${BUILD_TIME}" _site/index.html
           grep -q "${BUILD_ISO}" _site/index.html
-
+          # Same-origin fallbacks when browsers/content blockers block *.workers.dev
+          curl -fsSL --max-time 45 -A 'FuegosVivos-PagesBuild' \
+            "https://fuegos-proxy.crew.workers.dev/fires" -o _site/data/fires.json \
+            || curl -fsSL --max-time 45 -A 'FuegosVivos-PagesBuild' \
+              "https://api-lb.fogos.pt/new/fires" -o _site/data/fires.json
+          curl -fsSL --max-time 90 -A 'FuegosVivos-PagesBuild' \
+            "https://fuegos-proxy.crew.workers.dev/firms" -o _site/data/firms.geojson \
+            || echo '{"type":"FeatureCollection","features":[]}' > _site/data/firms.geojson
+          python3 - <<'PY'
+          import json
+          fires=json.load(open("_site/data/fires.json"))
+          firms=json.load(open("_site/data/firms.geojson"))
+          assert "data" in fires or isinstance(fires, list), fires
+          assert firms.get("type")=="FeatureCollection", firms
+          print("fallback fires rows", len(fires.get("data", fires if isinstance(fires,list) else [])))
+          print("fallback firms", len(firms.get("features", [])))
+          PY
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

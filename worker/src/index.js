@@ -12,7 +12,11 @@ const FOGOS_UPSTREAM = "https://api-lb.fogos.pt/new/fires";
 const FIRMS_CSVS = [
   "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Europe_24h.csv",
   "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Europe_24h.csv",
+  "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-21-viirs-c2/csv/J2_VIIRS_C2_Europe_24h.csv",
 ];
+
+/** Cluster cell in degrees (~0.02° ≈ 2 km). Smaller = more dots, heavier payload. */
+const FIRMS_CLUSTER_DEG = 0.02;
 
 /** Origins allowed to call this Worker from the browser. */
 const ALLOWED_ORIGINS = new Set([
@@ -89,7 +93,9 @@ function firmsToGeoJSON(allRows) {
     const confidence = String(row.confidence || "").toLowerCase();
     if (confidence === "low") continue;
     const frp = Number(row.frp) || 0;
-    const key = `${(Math.round(lat * 20) / 20).toFixed(2)},${(Math.round(lng * 20) / 20).toFixed(2)}`;
+    const key = `${(Math.round(lat / FIRMS_CLUSTER_DEG) * FIRMS_CLUSTER_DEG).toFixed(3)},${(
+      Math.round(lng / FIRMS_CLUSTER_DEG) * FIRMS_CLUSTER_DEG
+    ).toFixed(3)}`;
     const prev = best.get(key);
     const cand = {
       lat,
@@ -130,8 +136,8 @@ function firmsToGeoJSON(allRows) {
     type: "FeatureCollection",
     features,
     meta: {
-      source: "NASA FIRMS VIIRS (Suomi-NPP + NOAA-20) Europe 24h",
-      filtered: "Spain approx · confidence nominal/high · clustered 0.05°",
+      source: "NASA FIRMS VIIRS (Suomi-NPP + NOAA-20 + NOAA-21) Europe 24h",
+      filtered: "Spain approx · confidence nominal/high · clustered ~0.02°",
       count: features.length,
       updated: new Date().toISOString(),
     },

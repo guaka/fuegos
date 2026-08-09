@@ -44,6 +44,9 @@
   const PROXY_ORIGIN = "https://fuegos-proxy.crew.workers.dev";
   const FIRMS_URL = `${PROXY_ORIGIN}/firms`;
   const FOGOS_URL = `${PROXY_ORIGIN}/fires`;
+  /** Same-origin snapshots from Pages build — used if workers.dev is blocked (Lockdown / blockers). */
+  const FIRMS_FALLBACK_URL = "./data/firms.geojson";
+  const FOGOS_FALLBACK_URL = "./data/fires.json";
   const EFFIS_WMS = "https://maps.effis.emergency.copernicus.eu/effis";
 
   const STREET_TILE_TMPL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png";
@@ -818,16 +821,38 @@
     setBasemap(!!(els.layerSatellite && els.layerSatellite.checked));
   }
 
+  async function fetchJsonWithFallback(primaryUrl, fallbackUrl, label, timeoutMs) {
+    const ms = timeoutMs == null ? 18_000 : timeoutMs;
+    const tryOnce = async (url) => {
+      const ctrl = new AbortController();
+      const t = window.setTimeout(() => ctrl.abort(), ms);
+      try {
+        const res = await fetch(url, {
+          signal: ctrl.signal,
+          credentials: "omit",
+          cache: "no-cache",
+        });
+        if (!res.ok) throw new Error(`${label} HTTP ${res.status} @ ${url}`);
+        return await res.json();
+      } finally {
+        window.clearTimeout(t);
+      }
+    };
+    try {
+      return await tryOnce(primaryUrl);
+    } catch (err) {
+      console.warn(`${label} proxy failed, trying same-origin fallback`, err);
+      return await tryOnce(fallbackUrl);
+    }
+  }
+
   async function fetchFirmsHotspots() {
-    const res = await fetch(FIRMS_URL, { headers: { Accept: "application/geo+json, application/json" } });
-    if (!res.ok) throw new Error(`FIRMS proxy HTTP ${res.status}`);
-    return res.json();
+    return fetchJsonWithFallback(FIRMS_URL, FIRMS_FALLBACK_URL, "FIRMS", 25_000);
   }
 
   async function fetchFogosPtFires() {
-    const res = await fetch(FOGOS_URL, { headers: { Accept: "application/json" } });
-    if (!res.ok) throw new Error(`fogos proxy HTTP ${res.status}`);
-    return filterFogosRows(await res.json());
+    const payload = await fetchJsonWithFallback(FOGOS_URL, FOGOS_FALLBACK_URL, "fogos", 18_000);
+    return filterFogosRows(payload);
   }
 
   function clearMarkers() {
@@ -1518,6 +1543,13 @@
       scheduleLeafletResize();
       if (notes.length) {
         setHeaderStatus(`${els.ticker.textContent} · falló ${notes.join("/")}`);
+      } else if (
+        ptResult.status === "fulfilled" &&
+        ptFires.length === 0 &&
+        firmsResult.status === "fulfilled" &&
+        firmsCount === 0
+      ) {
+        /* keep ticker from updateTicker */
       }
 
       const hashId = currentHash();
