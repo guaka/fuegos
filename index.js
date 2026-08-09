@@ -25,6 +25,7 @@
 
   /**
    * Sidebar region sections. kind "galicia" uses incendios.gal; "sat" is EFFIS fly-to.
+   * Sat-only CCAA are one card each (province-level cards looked dead with no live feed).
    * Keep in sync with about.js coverage narrative.
    */
   const REGION_SECTIONS = [
@@ -40,89 +41,18 @@
       ],
     },
     {
-      title: "Madrid",
-      regions: [{ id: "madrid", name: "Madrid", kind: "sat", bbox: [-4.58, 39.88, -3.05, 41.17] }],
-    },
-    {
-      title: "Castilla-La Mancha",
+      title: "Resto de España",
       regions: [
-        { id: "toledo", name: "Toledo", kind: "sat", bbox: [-5.45, 39.15, -2.95, 40.35] },
-        { id: "ciudad-real", name: "Ciudad Real", kind: "sat", bbox: [-5.05, 38.35, -2.6, 39.55] },
-        { id: "cuenca", name: "Cuenca", kind: "sat", bbox: [-3.15, 39.25, -1.35, 40.55] },
-        { id: "albacete", name: "Albacete", kind: "sat", bbox: [-2.85, 38.0, -0.85, 39.45] },
-        { id: "guadalajara", name: "Guadalajara", kind: "sat", bbox: [-3.55, 40.15, -1.65, 41.35] },
-      ],
-    },
-    {
-      title: "Aragón",
-      regions: [
-        { id: "huesca", name: "Huesca", kind: "sat", bbox: [-0.95, 41.75, 0.8, 42.95] },
-        { id: "zaragoza", name: "Zaragoza", kind: "sat", bbox: [-2.15, 41.05, -0.05, 42.75] },
-        { id: "teruel", name: "Teruel", kind: "sat", bbox: [-1.85, 39.85, -0.05, 41.35] },
-      ],
-    },
-    {
-      title: "Cataluña",
-      regions: [
-        { id: "lleida", name: "Lleida", kind: "sat", bbox: [0.15, 41.35, 1.55, 42.9] },
-        { id: "girona", name: "Girona", kind: "sat", bbox: [1.7, 41.65, 3.35, 42.5] },
-        { id: "barcelona", name: "Barcelona", kind: "sat", bbox: [1.35, 41.2, 2.8, 42.35] },
-        { id: "tarragona", name: "Tarragona", kind: "sat", bbox: [0.15, 40.5, 1.7, 41.55] },
-      ],
-    },
-    {
-      title: "Comunitat Valenciana",
-      regions: [
-        { id: "castellon", name: "Castellón", kind: "sat", bbox: [-0.55, 39.65, 0.7, 40.8] },
-        { id: "valencia", name: "Valencia", kind: "sat", bbox: [-1.55, 38.7, -0.05, 39.85] },
-        { id: "alicante", name: "Alicante", kind: "sat", bbox: [-1.15, 37.85, 0.3, 38.9] },
-      ],
-    },
-    {
-      title: "Región de Murcia",
-      regions: [{ id: "murcia", name: "Murcia", kind: "sat", bbox: [-2.35, 37.35, -0.65, 38.75] }],
-    },
-    {
-      title: "Extremadura",
-      regions: [
-        { id: "caceres", name: "Cáceres", kind: "sat", bbox: [-7.55, 39.05, -4.72, 40.48] },
-        { id: "badajoz", name: "Badajoz", kind: "sat", bbox: [-7.55, 37.85, -4.65, 39.45] },
-      ],
-    },
-    {
-      title: "Andalucía",
-      regions: [
-        { id: "huelva", name: "Huelva", kind: "sat", bbox: [-7.6, 36.95, -6.15, 38.2] },
-        { id: "sevilla", name: "Sevilla", kind: "sat", bbox: [-6.55, 36.65, -4.95, 38.2] },
-        { id: "cadiz", name: "Cádiz", kind: "sat", bbox: [-6.5, 35.95, -5.0, 36.95] },
-        { id: "malaga", name: "Málaga", kind: "sat", bbox: [-5.65, 36.25, -3.7, 37.3] },
-        { id: "cordoba", name: "Córdoba", kind: "sat", bbox: [-5.6, 37.15, -4.0, 38.55] },
-        { id: "jaen", name: "Jaén", kind: "sat", bbox: [-4.4, 37.35, -2.4, 38.55] },
-        { id: "granada", name: "Granada", kind: "sat", bbox: [-4.35, 36.7, -2.05, 38.1] },
-        { id: "almeria", name: "Almería", kind: "sat", bbox: [-3.15, 36.65, -1.55, 37.9] },
-      ],
-    },
-    {
-      title: "Illes Balears",
-      regions: [
+        { id: "madrid", name: "Madrid", kind: "sat", bbox: [-4.58, 39.88, -3.05, 41.17] },
+        { id: "castilla-la-mancha", name: "Castilla-La Mancha", kind: "sat", bbox: [-5.45, 38.0, -0.85, 41.35] },
+        { id: "aragon", name: "Aragón", kind: "sat", bbox: [-2.15, 39.85, 0.8, 42.95] },
+        { id: "cataluna", name: "Cataluña", kind: "sat", bbox: [0.15, 40.5, 3.35, 42.9] },
+        { id: "valenciana", name: "C. Valenciana", kind: "sat", bbox: [-1.55, 37.85, 0.7, 40.8] },
+        { id: "murcia", name: "Murcia", kind: "sat", bbox: [-2.35, 37.35, -0.65, 38.75] },
+        { id: "extremadura", name: "Extremadura", kind: "sat", bbox: [-7.55, 37.85, -4.65, 40.48] },
+        { id: "andalucia", name: "Andalucía", kind: "sat", bbox: [-7.6, 35.95, -1.55, 38.55] },
         { id: "baleares", name: "Illes Balears", kind: "sat", bbox: [1.15, 38.65, 4.35, 40.1] },
-      ],
-    },
-    {
-      title: "Canarias",
-      regions: [
-        {
-          id: "santa-cruz-tenerife",
-          name: "S.C. Tenerife",
-          kind: "sat",
-          bbox: [-18.2, 27.6, -15.85, 28.9],
-        },
-        { id: "las-palmas", name: "Las Palmas", kind: "sat", bbox: [-15.9, 27.6, -13.3, 29.5] },
-      ],
-    },
-    {
-      title: "Ciudades autónomas",
-      regions: [
+        { id: "canarias", name: "Canarias", kind: "sat", bbox: [-18.2, 27.6, -13.3, 29.5] },
         { id: "ceuta", name: "Ceuta", kind: "sat", bbox: [-5.42, 35.86, -5.27, 35.92] },
         { id: "melilla", name: "Melilla", kind: "sat", bbox: [-2.98, 35.26, -2.9, 35.33] },
       ],
@@ -803,15 +733,23 @@
     map.fitBounds(bounds, { padding: 72, maxZoom: 9.5, essential: true });
   }
 
-  function flyToBbox(bbox) {
+  function flyToBbox(bbox, label) {
     if (!map || !bbox) return;
+    // Sat regions only have EFFIS pixels — make that layer visible when navigating.
+    if (els.layerHotspots && !els.layerHotspots.checked) {
+      els.layerHotspots.checked = true;
+      applyLayerChecks();
+    }
     map.fitBounds(
       [
         [bbox[0], bbox[1]],
         [bbox[2], bbox[3]],
       ],
-      { padding: 48, maxZoom: 9, essential: true }
+      { padding: 56, maxZoom: 9.5, essential: true }
     );
+    if (label && els.status) {
+      els.status.textContent = `${label}: sin partes oficiales en vivo — hotspots EFFIS en el mapa.`;
+    }
   }
 
   function renderMarkers() {
@@ -1046,7 +984,7 @@
 
     if (region.kind === "galicia") {
       const n = gaFires.length;
-      if (!n) btn.classList.add("is-empty");
+      if (!n) btn.classList.add("is-sat");
       btn.innerHTML = `
         <div class="region-head">
           <h3 class="region-name">${escapeHtml(region.name)}</h3>
@@ -1055,29 +993,72 @@
         <p class="region-meta">${
           n
             ? "Avisos cidadáns recientes (incendios.gal) — no oficiales"
-            : "Sin avisos recientes · capas satélite EFFIS"
+            : "Pulsa para acercar · avisos cidadáns + EFFIS"
         }</p>
       `;
       btn.addEventListener("click", () => {
         if (gaFires.length) flyToFires(gaFires);
-        else flyToBbox(region.bbox);
+        else flyToBbox(region.bbox, region.name);
         showSidebar(true);
       });
     } else {
-      btn.classList.add("is-empty");
+      btn.classList.add("is-sat");
       btn.innerHTML = `
         <div class="region-head">
           <h3 class="region-name">${escapeHtml(region.name)}</h3>
-          <span class="region-count">satélite</span>
+          <span class="region-count">ver mapa</span>
         </div>
-        <p class="region-meta">Sin parte abierto en vivo — hotspots EFFIS en el mapa</p>
+        <p class="region-meta">Pulsa para acercar · hotspots satélite EFFIS (sin parte oficial)</p>
       `;
       btn.addEventListener("click", () => {
-        flyToBbox(region.bbox);
+        flyToBbox(region.bbox, region.name);
         showSidebar(true);
       });
     }
     appendListItem(btn);
+  }
+
+  function renderCylSection(cylFires) {
+    const cylTitle = document.createElement("p");
+    cylTitle.className = "panel-title";
+    cylTitle.textContent = "Castilla y León · oficiales";
+    appendListItem(cylTitle);
+
+    const regions = regionStats(cylFires);
+    if (!regions.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "No hay partes oficiales en curso en CyL.";
+      appendListItem(empty);
+      return;
+    }
+    regions.forEach((region, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "region-card";
+      btn.style.animationDelay = `${Math.min(i, 10) * 0.03}s`;
+      const bits = [];
+      if (region.activo) bits.push(`${region.activo} activo${region.activo === 1 ? "" : "s"}`);
+      if (region.controlado) bits.push(`${region.controlado} controlado${region.controlado === 1 ? "" : "s"}`);
+      if (region.estabilizado) bits.push(`${region.estabilizado} estabilizado${region.estabilizado === 1 ? "" : "s"}`);
+      btn.innerHTML = `
+        <div class="region-head">
+          <h3 class="region-name">${escapeHtml(displayProvince(region.province))}</h3>
+          <span class="region-count"><strong>${region.total}</strong> en curso</span>
+        </div>
+        <p class="region-meta">${escapeHtml(bits.join(" · ") || "Sin desglose")}</p>
+        <div class="region-stats">
+          <span><b>${region.man}</b> operativos</span>
+          <span><b>${region.terrain}</b> terrestres</span>
+          <span><b>${region.aerial}</b> aéreos</span>
+        </div>
+      `;
+      btn.addEventListener("click", () => {
+        flyToFires(region.fires);
+        showSidebar(true);
+      });
+      appendListItem(btn);
+    });
   }
 
   function renderRegionOverview(list) {
@@ -1087,6 +1068,9 @@
     const cylFires = list.filter((f) => f.source === "JCyL");
     const gaFires = list.filter((f) => f.source === "incendios.gal");
 
+    // Live official parts first — sat cards used to bury them.
+    renderCylSection(cylFires);
+
     REGION_SECTIONS.forEach((section) => {
       const title = document.createElement("p");
       title.className = "panel-title";
@@ -1095,51 +1079,10 @@
       section.regions.forEach((region, i) => renderSatRegionCard(region, i, gaFires));
     });
 
-    const cylTitle = document.createElement("p");
-    cylTitle.className = "panel-title";
-    cylTitle.textContent = "Castilla y León";
-    appendListItem(cylTitle);
-
-    const regions = regionStats(cylFires);
-    if (!regions.length) {
-      const empty = document.createElement("div");
-      empty.className = "empty";
-      empty.textContent = "No hay partes oficiales en curso en CyL.";
-      appendListItem(empty);
-    } else {
-      regions.forEach((region, i) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "region-card";
-        btn.style.animationDelay = `${Math.min(i, 10) * 0.03}s`;
-        const bits = [];
-        if (region.activo) bits.push(`${region.activo} activo${region.activo === 1 ? "" : "s"}`);
-        if (region.controlado) bits.push(`${region.controlado} controlado${region.controlado === 1 ? "" : "s"}`);
-        if (region.estabilizado) bits.push(`${region.estabilizado} estabilizado${region.estabilizado === 1 ? "" : "s"}`);
-        btn.innerHTML = `
-          <div class="region-head">
-            <h3 class="region-name">${escapeHtml(displayProvince(region.province))}</h3>
-            <span class="region-count"><strong>${region.total}</strong> en curso</span>
-          </div>
-          <p class="region-meta">${escapeHtml(bits.join(" · ") || "Sin desglose")}</p>
-          <div class="region-stats">
-            <span><b>${region.man}</b> operativos</span>
-            <span><b>${region.terrain}</b> terrestres</span>
-            <span><b>${region.aerial}</b> aéreos</span>
-          </div>
-        `;
-        btn.addEventListener("click", () => {
-          flyToFires(region.fires);
-          showSidebar(true);
-        });
-        appendListItem(btn);
-      });
-    }
-
     const sat = document.createElement("p");
     sat.className = "overview-note";
     sat.innerHTML =
-      "Otras CCAA: sin parte diario abierto comparable — EFFIS en el mapa. Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a> (cidadán).";
+      "Fuera de CyL no hay parte diario abierto comparable — las tarjetas acercan el mapa a EFFIS. Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a> (cidadán).";
     appendListItem(sat);
 
     const pt = document.createElement("p");

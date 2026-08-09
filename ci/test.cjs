@@ -203,8 +203,9 @@ async function main() {
       "Madrid",
       "Illes Balears",
       "Melilla",
-      "Badajoz",
-      "Almería",
+      "Resto de España",
+      "is-sat",
+      "flyToBbox",
       "LEÓN",
       "SALAMANCA",
       "maplibregl",
@@ -222,6 +223,7 @@ async function main() {
     }
     assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"), "default Spain bbox");
     assert.ok(!js.includes("NORTH_REGIONS"), "renamed to REGION_SECTIONS");
+    assert.ok(!js.includes("is-empty"), "sat cards must stay clickable (not is-empty)");
     assert.ok(!js.includes("api-lb.fogos.pt"), "must not call fogos.pt API from the browser");
     assert.ok(!js.includes("fetchFogosPtFires"), "must not fetch fogos.pt fires");
     assert.ok(

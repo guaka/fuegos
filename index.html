@@ -227,13 +227,13 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       transform: translateY(-1px);
     }
-    .region-card.is-empty {
-      cursor: default;
-      opacity: 0.72;
+    .region-card.is-sat {
+      border: 1px dashed rgba(255, 110, 2, 0.35);
+      background: color-mix(in srgb, var(--card) 92%, var(--orange-soft));
     }
-    .region-card.is-empty:hover {
-      transform: none;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    .region-card.is-sat .region-count {
+      color: var(--orange);
+      font-weight: 700;
     }
     .region-head {
       display: flex;
@@ -687,7 +687,7 @@
         <span><i class="dot controlado"></i> Controlado</span>
         <span><i class="dot estabilizado"></i> Estabilizado</span>
       </div>
-      <p class="legend-hint">Todas las CCAA en el resumen (EFFIS / Galicia cidadá); CyL con partes oficiales. Pulsa un punto del mapa para el detalle.</p>
+      <p class="legend-hint">CyL con partes oficiales arriba; resto de CCAA acerca el mapa a hotspots EFFIS. Pulsa un punto del mapa para el detalle.</p>
       <ul class="fire-list" id="fire-list"></ul>
       <p class="footnote">
         ES: partes JCyL (CyL) + avisos cidadáns <a href="https://incendios.gal/" rel="noopener" target="_blank">incendios.gal</a> (Galicia).
