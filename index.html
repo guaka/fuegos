@@ -8,7 +8,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Fuegos Vivos — mapa de incendios en Castilla y León, Extremadura y la frontera portuguesa." />
+  <meta name="description" content="Fuegos Vivos — mapa de incendios en España (partes CyL + satélite EFFIS)." />
   <title>Fuegos Vivos</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -179,6 +179,13 @@
     .dot.estabilizado { background: var(--status-estabilizado); }
     .dot.conclusao { background: var(--status-conclusao); }
 
+    .legend-hint {
+      margin: 0.15rem 0 0.65rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
     .fire-list {
       list-style: none;
       margin: 0;
@@ -203,7 +210,15 @@
     }
     .card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
     .card.is-selected {
-      box-shadow: 0 0 0 2px var(--orange), 0 4px 12px rgba(0, 0, 0, 0.1);
+      background: #fff8f3;
+      box-shadow: 0 0 0 2px var(--orange), 0 6px 18px rgba(255, 110, 2, 0.22);
+      transform: translateY(-1px);
+    }
+    .card.is-selected .card-title {
+      color: var(--orange-deep);
+    }
+    .card.is-selected .fire-status {
+      height: 10px;
     }
     .card-body { padding: 1rem 1.1rem 1.05rem; }
     .fire-status {
@@ -377,6 +392,13 @@
     .layer-item:hover { background: #fff5f0; }
     .layer-item input { accent-color: var(--orange); }
     .layer-item.is-on { color: var(--orange); font-weight: 600; }
+    .layers-note {
+      margin: 0.35rem 0.85rem 0.15rem;
+      font-size: 0.78rem;
+      color: var(--ink-muted);
+      line-height: 1.35;
+    }
+    .layers-note a { font-weight: 600; }
 
     .footnote {
       margin: 0.25rem 0 0;
@@ -387,26 +409,50 @@
     }
 
     .map-marker {
-      width: 18px;
-      height: 18px;
+      --dot: 14px;
+      width: var(--dot);
+      height: var(--dot);
       border-radius: 50%;
       border: 2px solid #fff;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
       cursor: pointer;
       background: var(--status-otro);
       transform: translate(-50%, -50%);
+      transition: box-shadow 0.2s ease, transform 0.15s ease;
     }
+    .map-marker.size-sm { --dot: 12px; }
+    .map-marker.size-md { --dot: 18px; }
+    .map-marker.size-lg { --dot: 26px; }
+    .map-marker.size-xl { --dot: 34px; border-width: 3px; }
+    .map-marker.recency-fresh { opacity: 1; }
+    .map-marker.recency-aging { opacity: 0.72; }
+    .map-marker.recency-stale { opacity: 0.45; }
     .map-marker.activo { background: var(--status-activo); }
     .map-marker.controlado { background: var(--status-controlado); }
     .map-marker.estabilizado { background: var(--status-estabilizado); }
     .map-marker.conclusao { background: var(--status-conclusao); }
-    .map-marker.pt {
-      box-shadow: 0 0 0 2px #006600, 0 1px 4px rgba(0, 0, 0, 0.35);
-    }
     .map-marker.is-selected {
-      width: 28px;
-      height: 28px;
-      box-shadow: 0 0 0 3px rgba(255, 110, 2, 0.45), 0 2px 8px rgba(0, 0, 0, 0.35);
+      z-index: 5;
+      transform: translate(-50%, -50%) scale(1.12);
+      box-shadow:
+        0 0 0 3px #fff,
+        0 0 0 7px var(--orange),
+        0 4px 14px rgba(0, 0, 0, 0.45);
+      animation: marker-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes marker-pulse {
+      0%, 100% {
+        box-shadow:
+          0 0 0 3px #fff,
+          0 0 0 7px var(--orange),
+          0 4px 14px rgba(0, 0, 0, 0.45);
+      }
+      50% {
+        box-shadow:
+          0 0 0 3px #fff,
+          0 0 0 11px rgba(255, 110, 2, 0.55),
+          0 4px 18px rgba(0, 0, 0, 0.4);
+      }
     }
 
     .maplibregl-ctrl-attrib {
@@ -468,20 +514,19 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Listado de incendios">
       <div class="sidebar-tools">
-        <input class="search" id="search" type="search" placeholder="Buscar municipio, distrito o provincia…" autocomplete="off" />
+        <input class="search" id="search" type="search" placeholder="Buscar municipio o provincia…" autocomplete="off" />
       </div>
       <p class="meta-line" id="status-line">Actualizando partes oficiales…</p>
       <div class="legend" aria-hidden="true">
-        <span><i class="dot activo"></i> Em curso / Activo</span>
-        <span><i class="dot controlado"></i> Em resolução / Controlado</span>
-        <span><i class="dot estabilizado"></i> Vigilância / Estabilizado</span>
-        <span><i class="dot conclusao"></i> Conclusão</span>
+        <span><i class="dot activo"></i> Activo</span>
+        <span><i class="dot controlado"></i> Controlado</span>
+        <span><i class="dot estabilizado"></i> Estabilizado</span>
       </div>
+      <p class="legend-hint">Mapa de España: puntos oficiales CyL en curso; el resto vía satélite EFFIS. Tamaño = magnitud; opacidad = lo reciente del parte.</p>
       <ul class="fire-list" id="fire-list"></ul>
       <p class="footnote">
-        ES (Castilla y León): partes JCyL.
-        PT (frontera): <a href="https://fogos.pt" rel="noopener">fogos.pt</a> / ANEPC.
-        Extremadura (Badajoz/Cáceres) y satélite: EFFIS/Copernicus (detecciones, no despachos).
+        ES: partes oficiales en curso de Castilla y León (JCyL). Resto de España: EFFIS/Copernicus (detecciones, no despachos).
+        Portugal: ver <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a>.
         <a href="./about.html">Sobre la cobertura</a> ·
         <a href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a> ·
         <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>
@@ -497,10 +542,10 @@
         </div>
         <div class="layers-body">
           <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> Oficiales CyL (ES)</label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-portugal" checked /> Portugal (fogos.pt)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-hotspots" checked /> Hotspots satélite</label>
           <label class="layer-item"><input type="checkbox" id="layer-burned" /> Área quemada</label>
           <label class="layer-item"><input type="checkbox" id="layer-satellite" /> Vista satélite</label>
+          <p class="layers-note">Portugal → <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a></p>
         </div>
       </div>
     </div>

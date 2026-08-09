@@ -85,15 +85,38 @@ function statusClass(status) {
   return "otro";
 }
 
-function parseFogosDate(date, hour) {
-  const m = String(date || "").match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (!m) return Date.parse(`${date}T${hour || "00:00"}`) || 0;
-  return Date.parse(`${m[3]}-${m[2]}-${m[1]}T${hour || "00:00"}`) || 0;
-}
-
 function inFocusBbox(lat, lng, bbox) {
   const [w, s, e, n] = bbox;
   return lng >= w && lng <= e && lat >= s && lat <= n;
+}
+
+function parseHectares(surface) {
+  const m = String(surface || "").match(/([\d]+(?:[.,]\d+)?)\s*ha\b/i);
+  if (!m) return 0;
+  return Number(m[1].replace(",", ".")) || 0;
+}
+
+function seriousnessScore(fire) {
+  const man = Number(fire.man) || 0;
+  const terrain = Number(fire.terrain) || 0;
+  const aerial = Number(fire.aerial) || 0;
+  const resources = man + terrain * 2 + aerial * 5;
+  const ha = Math.min(parseHectares(fire.surface), 500);
+  const statusBoost =
+    fire.statusClass === "activo" ? 12 : fire.statusClass === "controlado" ? 4 : 0;
+  return resources + ha * 0.4 + statusBoost;
+}
+
+function markerSizeClass(fire) {
+  const s = seriousnessScore(fire);
+  if (s >= 90) return "size-xl";
+  if (s >= 45) return "size-lg";
+  if (s >= 18) return "size-md";
+  return "size-sm";
+}
+
+function isExtinguished(row) {
+  return /^\d{4}-\d{2}-\d{2}/.test(String(row.fecha_extinguido || "").trim());
 }
 
 function read(file) {
@@ -121,15 +144,16 @@ async function main() {
     for (const needle of [
       "Regiones cubiertas",
       "Castilla y León",
+      "Andalucía",
+      "Galicia",
+      "Cataluña",
       "Extremadura",
-      "León",
-      "Salamanca",
-      "Badajoz",
-      "Cáceres",
-      "Zamora",
+      "Baleares",
+      "Canarias",
+      "toda España",
       "coverage-map",
       "./about.js",
-      "Bragança",
+      "fogos.pt",
     ]) {
       assert.ok(html.includes(needle), `missing ${needle}`);
     }
@@ -137,6 +161,7 @@ async function main() {
     assert.ok(js.includes("BBOX"));
     assert.ok(js.includes("maplibregl"));
     assert.ok(js.includes("fitBounds"));
+    assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"));
   });
 
   test("HTML has core UI hooks", () => {
@@ -148,7 +173,7 @@ async function main() {
       'id="sidebar"',
       'id="ticker"',
       'id="layer-oficiales"',
-      'id="layer-portugal"',
+      "fogos.pt",
       "./index.js",
       "maplibre-gl",
       "AGPL",
@@ -159,28 +184,35 @@ async function main() {
     }
   });
 
-  test("index.js wires ES + PT + EFFIS sources", () => {
+  test("index.js wires ES + EFFIS sources (no fogos.pt API)", () => {
     const js = read("index.js");
     for (const needle of [
       "analisis.datosabiertos.jcyl.es",
-      "api-lb.fogos.pt",
       "maps.effis.emergency.copernicus.eu",
       "parseResources",
-      "normalizeFogosPt",
-      "fetchFogosPtFires",
+      "fetchJcylFires",
       "ZAMORA",
       "ÁVILA",
       "VALLADOLID",
       "BURGOS",
       "SORIA",
-      "FOCUS_PROVINCES",
+      "OFFICIAL_PROVINCES",
       "LEÓN",
       "SALAMANCA",
       "maplibregl",
       "isStyleLoaded",
+      "markerSizeClass",
+      "seriousnessScore",
+      "isExtinguished",
+      "fecha_extinguido is null",
+      "PARTE_LOOKBACK_DAYS",
     ]) {
       assert.ok(js.includes(needle), `missing ${needle}`);
     }
+    assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"), "default Spain bbox");
+    assert.ok(!js.includes("FOCUS_PROVINCES"), "renamed to OFFICIAL_PROVINCES");
+    assert.ok(!js.includes("api-lb.fogos.pt"), "must not call fogos.pt API from the browser");
+    assert.ok(!js.includes("fetchFogosPtFires"), "must not fetch fogos.pt fires");
     assert.ok(
       !/\.\.\.\s*map\.getStyle\s*\(/.test(js),
       "must not call setStyle({...map.getStyle()}) — breaks MapLibre before load"
@@ -208,48 +240,74 @@ async function main() {
     assert.deepStrictEqual(parseResources(null), { man: 0, terrain: 0, aerial: 0 });
   });
 
-  test("statusClass maps ES and PT labels", () => {
+  test("statusClass maps CyL labels", () => {
     assert.strictEqual(statusClass("ACTIVO"), "activo");
     assert.strictEqual(statusClass("CONTROLADO"), "controlado");
     assert.strictEqual(statusClass("ESTABILIZADO"), "estabilizado");
-    assert.strictEqual(statusClass("Em Curso"), "activo");
-    assert.strictEqual(statusClass("Em Resolução"), "controlado");
-    assert.strictEqual(statusClass("Vigilância"), "estabilizado");
-    assert.strictEqual(statusClass("Conclusão"), "conclusao");
-    assert.strictEqual(statusClass("Chegada ao TO"), "activo");
-    assert.strictEqual(statusClass("Despacho de 1º Alerta"), "activo");
   });
 
-  test("parseFogosDate understands DD-MM-YYYY", () => {
-    const t = parseFogosDate("09-08-2026", "15:01");
-    assert.ok(t > 0);
-    const d = new Date(t);
-    assert.strictEqual(d.getUTCFullYear(), 2026);
-    assert.strictEqual(d.getUTCMonth(), 7);
-    assert.strictEqual(d.getUTCDate(), 9);
+  test("marker size grows with medios / hectares", () => {
+    assert.strictEqual(parseHectares("FORESTAL 12,5 HA"), 12.5);
+    assert.strictEqual(parseHectares("sin dato"), 0);
+    assert.strictEqual(
+      markerSizeClass({ man: 2, terrain: 0, aerial: 0, surface: "", statusClass: "estabilizado" }),
+      "size-sm"
+    );
+    assert.strictEqual(
+      markerSizeClass({ man: 20, terrain: 4, aerial: 0, surface: "", statusClass: "activo" }),
+      "size-md"
+    );
+    assert.strictEqual(
+      markerSizeClass({ man: 25, terrain: 5, aerial: 1, surface: "", statusClass: "activo" }),
+      "size-lg"
+    );
+    assert.strictEqual(
+      markerSizeClass({ man: 80, terrain: 20, aerial: 5, surface: "200 HA", statusClass: "activo" }),
+      "size-xl"
+    );
+    assert.ok(
+      seriousnessScore({ man: 10, terrain: 0, aerial: 2, surface: "", statusClass: "activo" }) >
+        seriousnessScore({ man: 10, terrain: 0, aerial: 0, surface: "", statusClass: "estabilizado" })
+    );
   });
 
-  test("focus bbox includes Portuguese border sample points", () => {
-    const bbox = [-8.35, 37.85, -1.55, 43.55];
-    assert.ok(inFocusBbox(41.636695, -7.33691, bbox)); // Vila Real
-    assert.ok(inFocusBbox(40.569068, -7.509515, bbox)); // Guarda
+  test("selected marker / size CSS present", () => {
+    const html = read("index.html");
+    assert.ok(html.includes("size-xl"));
+    assert.ok(html.includes("marker-pulse"));
+    assert.ok(html.includes(".map-marker.is-selected"));
+    assert.ok(html.includes("legend-hint"));
+    assert.ok(html.includes("recency-stale"));
+  });
+
+  test("extinguished and stale fires are excluded", () => {
+    assert.ok(isExtinguished({ fecha_extinguido: "2026-07-26" }));
+    assert.ok(isExtinguished({ fecha_extinguido: "2026-07-26 13:03" }));
+    assert.ok(!isExtinguished({ fecha_extinguido: null }));
+    assert.ok(!isExtinguished({ fecha_extinguido: "" }));
+    assert.ok(!isExtinguished({ fecha_extinguido: "09:59" })); // time-only junk
+  });
+
+  test("focus bbox covers Spain sample points", () => {
+    const bbox = [-9.5, 35.95, 4.45, 43.85];
     assert.ok(inFocusBbox(42.721508, -5.951445, bbox)); // León
     assert.ok(inFocusBbox(41.65, -4.73, bbox)); // Valladolid
     assert.ok(inFocusBbox(39.48, -6.37, bbox)); // Cáceres
-    assert.ok(!inFocusBbox(38.7, -9.1, bbox)); // Lisboa area — west of focus
+    assert.ok(inFocusBbox(37.39, -5.99, bbox)); // Sevilla
+    assert.ok(inFocusBbox(41.39, 2.17, bbox)); // Barcelona
+    assert.ok(inFocusBbox(39.57, 2.65, bbox)); // Palma
+    assert.ok(inFocusBbox(42.88, -8.54, bbox)); // Santiago
+    assert.ok(!inFocusBbox(28.1, -15.4, bbox)); // Canarias — fuera de la vista por defecto
   });
 
   await testAsync("JCyL API responds", async () => {
     const since = new Date();
-    since.setUTCDate(since.getUTCDate() - 14);
+    since.setUTCDate(since.getUTCDate() - 3);
     const iso = since.toISOString().slice(0, 10);
-    const provinces = ["LEÓN", "SALAMANCA", "ZAMORA", "ÁVILA", "VALLADOLID", "PALENCIA", "BURGOS", "SEGOVIA", "SORIA"]
-      .map((p) => `'${p}'`)
-      .join(",");
     const where =
       `fecha_del_parte >= date'${iso}'` +
-      ` and provincia in (${provinces})` +
-      ` and situacion_actual in ('ACTIVO','CONTROLADO','ESTABILIZADO')`;
+      ` and situacion_actual in ('ACTIVO','CONTROLADO','ESTABILIZADO')` +
+      ` and fecha_extinguido is null`;
     const url = new URL(
       "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records"
     );
@@ -260,19 +318,6 @@ async function main() {
     const data = await res.json();
     assert.ok(Array.isArray(data.results));
     assert.ok(typeof data.total_count === "number");
-  });
-
-  await testAsync("fogos.pt API responds", async () => {
-    const res = await fetch("https://api-lb.fogos.pt/new/fires", {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "FuegosVivos-CI/1.0",
-      },
-    });
-    assert.strictEqual(res.status, 200);
-    const data = await res.json();
-    assert.ok(data.success === true || Array.isArray(data.data));
-    assert.ok(Array.isArray(data.data));
   });
 
   await testAsync("EFFIS WMS returns PNG", async () => {

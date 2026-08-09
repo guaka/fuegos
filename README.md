@@ -1,17 +1,16 @@
 # Fuegos Vivos
 
-Mapa público de incendios en **Castilla y León**, **Extremadura** y la frontera portuguesa, al estilo de [fogos.pt](https://fogos.pt).
+Mapa público de incendios en **España** (península y Baleares; Canarias navegable), al estilo de [fogos.pt](https://fogos.pt).
 
-Sitio estático de dos archivos (`index.html` + `index.js`). Sin build. Licencia **AGPL-3.0**.
+Sitio estático (`index.html` + `index.js`). Sin build. Licencia **AGPL-3.0**.
 
 ## Datos
 
-- **España — Castilla y León:** partes oficiales [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL) para las nueve provincias, con conteo de medios a partir del texto.
-- **España — Extremadura:** Badajoz y Cáceres en el mapa vía EFFIS (sin parte diario abierto comparable).
-- **Portugal — distritos fronterizos:** intento en vivo contra la API de [fogos.pt](https://fogos.pt) (ANEPC). Si el navegador no recibe CORS, esa capa queda vacía y el resto del mapa sigue funcionando.
-- **Satélite:** capas WMS [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/).
+- **Oficiales en vivo:** [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (JCyL) — Castilla y León, solo partes en curso (sin extinción, parte reciente).
+- **Resto de España:** capas WMS [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) (detecciones satélite, no despachos). No hay un feed nacional abierto diario comparable.
+- **Portugal:** enlace a [fogos.pt](https://fogos.pt).
 
-La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas. Las detecciones satélite no son despachos de extinción.
+La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas.
 
 ## Páginas
 
@@ -40,7 +39,7 @@ No hay paso de build: se sirven `index.html` e `index.js` tal cual.
 node ci/test.cjs
 ```
 
-GitHub Actions runs the same suite on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): file contracts, JS syntax, resource/status helpers, and smoke checks for JCyL, fogos.pt, and EFFIS.
+GitHub Actions runs the same suite on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): file contracts, JS syntax, resource/status helpers, and smoke checks for JCyL and EFFIS.
 
 ## Licencia
 
