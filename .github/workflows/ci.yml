@@ -28,11 +28,13 @@ jobs:
           grep -q 'Fuegos' index.html
           grep -q 'id="map"' index.html
           grep -q 'id="fire-list"' index.html
-          grep -q 'id="panel"' index.html
+          grep -q 'id="sidebar"' index.html
           grep -q './index.js' index.html
           grep -q 'maplibre-gl' index.html
           grep -qi 'AGPL' index.html
           grep -qi 'AGPL' LICENSE
+          grep -q 'ticker' index.html
+          grep -q 'layer-oficiales' index.html
 
       - name: JS contract
         run: |
@@ -42,6 +44,8 @@ jobs:
           grep -q 'LEÓN' index.js
           grep -q 'SALAMANCA' index.js
           grep -q 'maplibregl' index.js
+          grep -q 'parseResources' index.js
+          grep -q 'updateTicker' index.js
 
       - name: JCyL API smoke
         run: |

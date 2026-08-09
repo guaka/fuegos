@@ -5,7 +5,7 @@
   const FOCUS = {
     center: [-6.15, 40.85],
     zoom: 7.1,
-    bbox: [-7.85, 38.55, -4.55, 43.35], // west,south,east,north
+    bbox: [-7.85, 38.55, -4.55, 43.35],
   };
 
   const FOCUS_PROVINCES = new Set(["LEÓN", "SALAMANCA"]);
@@ -15,17 +15,29 @@
     "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records";
   const EFFIS_WMS = "https://maps.effis.emergency.copernicus.eu/effis";
 
+  const STREET_TILES = [
+    "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+    "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+    "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+  ];
+  const SAT_TILES = [
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  ];
+
   const els = {
-    panel: document.getElementById("panel"),
+    sidebar: document.getElementById("sidebar"),
     list: document.getElementById("fire-list"),
-    detail: document.getElementById("fire-detail"),
     status: document.getElementById("status-line"),
-    btnActivos: document.getElementById("btn-activos"),
+    ticker: document.getElementById("ticker"),
+    search: document.getElementById("search"),
+    btnToggleList: document.getElementById("btn-toggle-list"),
     btnRecenter: document.getElementById("btn-recenter"),
-    btnClose: document.getElementById("btn-close-panel"),
+    btnLayers: document.getElementById("btn-layers"),
+    layersPanel: document.getElementById("layers-panel"),
     layerOficiales: document.getElementById("layer-oficiales"),
     layerHotspots: document.getElementById("layer-hotspots"),
     layerBurned: document.getElementById("layer-burned"),
+    layerSatellite: document.getElementById("layer-satellite"),
   };
 
   /** @type {maplibregl.Map} */
@@ -36,7 +48,7 @@
   let selectedId = null;
   /** @type {Map<string, maplibregl.Marker>} */
   const markers = new Map();
-  let lastUpdated = null;
+  let query = "";
 
   function isoDate(d) {
     return d.toISOString().slice(0, 10);
@@ -65,7 +77,6 @@
     if (withTime) {
       params.set("TIME", `${isoDate(daysAgo(7))}/${isoDate(new Date())}`);
     }
-    // MapLibre needs the template placeholder unencoded
     return `${EFFIS_WMS}?${params.toString().replace("%7Bbbox-epsg-3857%7D", "{bbox-epsg-3857}")}`;
   }
 
@@ -92,31 +103,72 @@
 
   function parteStamp(fire) {
     const raw = fire.parteAt || fire.rawOrden || "";
-    const normalized = String(raw).replace(/\//g, "-");
-    const t = Date.parse(normalized.replace(" ", "T"));
+    const t = Date.parse(String(raw).replace(" ", "T"));
     return Number.isFinite(t) ? t : 0;
+  }
+
+  /** Parse JCyL "medios_de_extincion" into fogos-like man / terrain / aerial counts. */
+  function parseResources(text) {
+    const out = { man: 0, terrain: 0, aerial: 0 };
+    if (!text) return out;
+    const parts = String(text).split(";").map((p) => p.trim()).filter(Boolean);
+    for (const part of parts) {
+      const m = part.match(/^(\d+)\s+(.+)$/i);
+      if (!m) continue;
+      const n = Number(m[1]) || 0;
+      const label = m[2].toUpperCase();
+      if (
+        /HT-|HK-|AA-|HELI|AVION|AVI[OÓ]N|MEDIO\s*A[EÉ]REO|BRIF\s*A[EÉ]RE/.test(label) ||
+        /^AA\b/.test(label) ||
+        /^HT\b/.test(label) ||
+        /^HK\b/.test(label)
+      ) {
+        out.aerial += n;
+      } else if (/AUTOBOMBA|BULDOZER|BULLDOZER|CAMI[OÓ]N|TERRESTRE|VEH[IÍ]CULO|NODRIZA/.test(label)) {
+        out.terrain += n;
+      } else if (
+        /A\.?\s*M\.?|ELIF|CUADRILLA|T[EÉ]CNICO|BRIF|BOMBERO|OPERATIVO|PERSONAL|CONVOY/.test(label)
+      ) {
+        out.man += n;
+      } else {
+        // Unknown numbered resource: count as ground crew-ish if not clearly gear.
+        out.man += n;
+      }
+    }
+    return out;
+  }
+
+  function shortMunicipality(name) {
+    if (!name) return "Sin municipio";
+    // "UTRERA (LA)(VALDESAMARIO)" → keep readable
+    return String(name).replace(/\s+/g, " ").trim();
   }
 
   function normalizeFire(row) {
     const province = provinceOf(row.provincia);
     const status = (row.situacion_actual || "").trim().toUpperCase();
     const pos = row.posicion || {};
+    const resources = parseResources(row.medios_de_extincion);
+    const municipality = shortMunicipality(row.termino_municipal);
     return {
       id: fireKey(row),
-      municipality: row.termino_municipal || "Sin municipio",
+      municipality,
       province,
       status,
       statusClass: statusClass(status),
       level: row.nivel || row.nivel_maximo_alcanzado || "—",
       cause: row.causa_probable || "—",
       surface: row.tipo_y_has_de_superficie_afectada || "—",
-      resources: row.medios_de_extincion || "—",
+      resourcesText: row.medios_de_extincion || "—",
+      man: resources.man,
+      terrain: resources.terrain,
+      aerial: resources.aerial,
       started: [row.fecha_de_inicio, row.hora_de_inicio].filter(Boolean).join(" "),
-      extinguished: [row.fecha_extinguido, row.hora_extinguido].filter(Boolean).join(" ") || null,
       parteAt: [row.fecha_del_parte, row.hora_del_parte].filter(Boolean).join(" "),
+      rawOrden: row.orden || "",
       lat: typeof pos.lat === "number" ? pos.lat : null,
       lng: typeof pos.lon === "number" ? pos.lon : null,
-      rawOrden: row.orden || "",
+      locationLine: [municipality, province].filter(Boolean).join(", "),
     };
   }
 
@@ -125,8 +177,7 @@
     if (!mun || mun.startsWith("SIN INCID")) return false;
     const status = (row.situacion_actual || "").trim().toUpperCase();
     if (!ACTIVE_STATUSES.has(status)) return false;
-    const province = provinceOf(row.provincia);
-    if (!FOCUS_PROVINCES.has(province)) return false;
+    if (!FOCUS_PROVINCES.has(provinceOf(row.provincia))) return false;
     if (!row.posicion || typeof row.posicion.lat !== "number") return false;
     return true;
   }
@@ -176,6 +227,9 @@
       const ra = rank[a.status] ?? 9;
       const rb = rank[b.status] ?? 9;
       if (ra !== rb) return ra - rb;
+      const ma = a.man + a.terrain + a.aerial;
+      const mb = b.man + b.terrain + b.aerial;
+      if (mb !== ma) return mb - ma;
       return parteStamp(b) - parteStamp(a);
     });
     return list;
@@ -189,11 +243,7 @@
         sources: {
           basemap: {
             type: "raster",
-            tiles: [
-              "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-              "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-              "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-            ],
+            tiles: STREET_TILES,
             tileSize: 256,
             attribution:
               '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -241,6 +291,7 @@
     });
 
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+    map.on("click", () => selectFire(null, false));
   }
 
   function setLayerVisibility(layerId, visible) {
@@ -248,9 +299,30 @@
     map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
   }
 
+  function setBasemap(satellite) {
+    const src = map.getSource("basemap");
+    if (!src || typeof src.setTiles !== "function") {
+      // Fallback: swap via style mutation
+      map.setStyle({
+        ...map.getStyle(),
+      });
+    }
+    if (src && typeof src.setTiles === "function") {
+      src.setTiles(satellite ? SAT_TILES : STREET_TILES);
+    }
+  }
+
   function clearMarkers() {
     for (const m of markers.values()) m.remove();
     markers.clear();
+  }
+
+  function filteredFires() {
+    const q = query.trim().toLowerCase();
+    if (!q) return fires;
+    return fires.filter((f) =>
+      `${f.municipality} ${f.province} ${f.status} ${f.locationLine}`.toLowerCase().includes(q)
+    );
   }
 
   function selectFire(id, fly) {
@@ -258,56 +330,63 @@
     const fire = fires.find((f) => f.id === id) || null;
 
     for (const [mid, marker] of markers) {
-      const el = marker.getElement();
-      el.classList.toggle("selected", mid === id);
+      marker.getElement().classList.toggle("is-selected", mid === id);
     }
-
-    Array.from(els.list.querySelectorAll(".fire-item")).forEach((btn) => {
-      btn.setAttribute("aria-selected", btn.dataset.id === id ? "true" : "false");
+    Array.from(els.list.querySelectorAll(".card")).forEach((btn) => {
+      btn.classList.toggle("is-selected", btn.dataset.id === id);
     });
 
-    if (!fire) {
-      els.detail.hidden = true;
-      els.detail.innerHTML = "";
-      return;
+    if (fire && fly && fire.lat != null && fire.lng != null) {
+      map.flyTo({
+        center: [fire.lng, fire.lat],
+        zoom: Math.max(map.getZoom(), 10),
+        essential: true,
+      });
+      const card = els.list.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+      if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      showSidebar(true);
     }
 
-    els.detail.hidden = false;
-    els.detail.innerHTML = `
-      <h3>${escapeHtml(fire.municipality)}</h3>
-      <p class="meta">${escapeHtml(fire.province)} · parte ${escapeHtml(fire.parteAt || "—")}</p>
-      <dl>
-        <dt>Estado</dt><dd>${escapeHtml(fire.status)}</dd>
-        <dt>Nivel</dt><dd>${escapeHtml(String(fire.level))}</dd>
-        <dt>Inicio</dt><dd>${escapeHtml(fire.started || "—")}</dd>
-        <dt>Causa</dt><dd>${escapeHtml(fire.cause)}</dd>
-        <dt>Superficie</dt><dd>${escapeHtml(fire.surface)}</dd>
-        <dt>Medios</dt><dd>${escapeHtml(fire.resources)}</dd>
-      </dl>
+    if (id) {
+      history.replaceState(null, "", `#${encodeURIComponent(id)}`);
+    } else if (location.hash) {
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+  }
+
+  function assetBlock(fire) {
+    return `
+      <div class="assets" aria-label="Medios">
+        <span class="asset" title="Operativos">
+          <svg><use href="#ico-man"></use></svg>
+          <span><strong>${fire.man}</strong><br /><em>Operativos</em></span>
+        </span>
+        <span class="asset" title="Terrestres">
+          <svg><use href="#ico-truck"></use></svg>
+          <span><strong>${fire.terrain}</strong><br /><em>Terrestres</em></span>
+        </span>
+        <span class="asset" title="Aéreos">
+          <svg><use href="#ico-plane"></use></svg>
+          <span><strong>${fire.aerial}</strong><br /><em>Aéreos</em></span>
+        </span>
+      </div>
     `;
-
-    if (fly && fire.lat != null && fire.lng != null) {
-      map.flyTo({ center: [fire.lng, fire.lat], zoom: Math.max(map.getZoom(), 10), essential: true });
-    }
   }
 
   function renderMarkers() {
     clearMarkers();
-    const show = els.layerOficiales.getAttribute("aria-pressed") === "true";
-    if (!show) return;
+    if (!els.layerOficiales.checked) return;
 
-    fires.forEach((fire) => {
+    filteredFires().forEach((fire) => {
       const el = document.createElement("button");
       el.type = "button";
-      el.className = `marker ${fire.statusClass}`;
-      el.title = `${fire.municipality} — ${fire.status}`;
+      el.className = `map-marker ${fire.statusClass}`;
+      el.title = `${fire.locationLine} — ${fire.status}`;
       el.setAttribute("aria-label", `${fire.municipality}, ${fire.status}`);
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        openPanel();
         selectFire(fire.id, true);
       });
-
       const marker = new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([fire.lng, fire.lat])
         .addTo(map);
@@ -318,34 +397,66 @@
   }
 
   function renderList() {
+    const list = filteredFires();
     els.list.innerHTML = "";
+
     if (!fires.length) {
       els.list.innerHTML =
-        '<li class="empty">No hay partes activos en León o Salamanca en las últimas dos semanas. Revisa la capa de hotspots satélite para Badajoz y el resto del área.</li>';
+        '<li class="empty">No hay partes activos en León o Salamanca. Usa hotspots satélite para Badajoz y el resto del área.</li>';
+      return;
+    }
+    if (!list.length) {
+      els.list.innerHTML = '<li class="empty">Ningún incendio coincide con la búsqueda.</li>';
       return;
     }
 
-    fires.forEach((fire, i) => {
+    list.forEach((fire, i) => {
       const li = document.createElement("li");
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "fire-item";
+      btn.className = `card${fire.id === selectedId ? " is-selected" : ""}`;
       btn.dataset.id = fire.id;
-      btn.style.animationDelay = `${Math.min(i, 12) * 0.04}s`;
-      btn.setAttribute("aria-selected", fire.id === selectedId ? "true" : "false");
+      btn.style.animationDelay = `${Math.min(i, 12) * 0.03}s`;
       btn.innerHTML = `
-        <span class="badge badge-${fire.statusClass}">${escapeHtml(fire.status)}</span>
-        <span class="name">${escapeHtml(fire.municipality)}</span>
-        <span class="sub">
-          <span>${escapeHtml(fire.province)}</span>
-          <span>Nivel ${escapeHtml(String(fire.level))}</span>
-          <span>${escapeHtml(fire.parteAt || "")}</span>
-        </span>
+        <div class="fire-status ${fire.statusClass}"></div>
+        <div class="card-body">
+          <span class="status-pill ${fire.statusClass}">${escapeHtml(fire.status)}</span>
+          <h3 class="card-title">${escapeHtml(fire.municipality)}</h3>
+          <div class="fields">
+            <div>
+              <h6 class="field-label">Local</h6>
+              <p class="field-value">${escapeHtml(fire.locationLine)}</p>
+            </div>
+            <div>
+              <h6 class="field-label">Inicio</h6>
+              <p class="field-value">${escapeHtml(fire.started || "—")}</p>
+            </div>
+            <div>
+              <h6 class="field-label">Superficie / naturaleza</h6>
+              <p class="field-value">${escapeHtml(fire.surface)}</p>
+            </div>
+          </div>
+          ${assetBlock(fire)}
+        </div>
       `;
       btn.addEventListener("click", () => selectFire(fire.id, true));
       li.appendChild(btn);
       els.list.appendChild(li);
     });
+  }
+
+  function updateTicker() {
+    const n = fires.length;
+    const activos = fires.filter((f) => f.status === "ACTIVO").length;
+    const man = fires.reduce((s, f) => s + f.man, 0);
+    const terrain = fires.reduce((s, f) => s + f.terrain, 0);
+    const aerial = fires.reduce((s, f) => s + f.aerial, 0);
+    const now = new Date();
+    const hhmm = now.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    els.ticker.textContent =
+      `${hhmm} — ${n} incendio${n === 1 ? "" : "s"} en León/Salamanca` +
+      `${activos ? ` (${activos} activo${activos === 1 ? "" : "s"})` : ""}` +
+      ` · ${man} operativos, ${terrain} terrestres, ${aerial} aéreos`;
   }
 
   function escapeHtml(value) {
@@ -371,18 +482,19 @@
     els.status.textContent = "Actualizando partes oficiales…";
     try {
       fires = await fetchJcylFires();
-      lastUpdated = new Date();
       const n = fires.length;
-      els.status.textContent = `${n} activo${n === 1 ? "" : "s"} en León/Salamanca · actualizado ${formatUpdated(lastUpdated)}`;
-      if (selectedId && !fires.some((f) => f.id === selectedId)) {
-        selectedId = null;
-        els.detail.hidden = true;
-      }
+      els.status.textContent = `${n} activo${n === 1 ? "" : "s"} · actualizado ${formatUpdated(new Date())}`;
+      updateTicker();
+      if (selectedId && !fires.some((f) => f.id === selectedId)) selectedId = null;
       renderList();
       renderMarkers();
+
+      const hashId = decodeURIComponent((location.hash || "").replace(/^#/, ""));
+      if (hashId && fires.some((f) => f.id === hashId)) selectFire(hashId, true);
     } catch (err) {
       console.error(err);
-      els.status.innerHTML = `<span class="error">No se pudieron cargar los partes de CyL.</span>`;
+      els.status.innerHTML = '<span class="error">No se pudieron cargar los partes de CyL.</span>';
+      els.ticker.textContent = "Error al actualizar datos oficiales";
       if (!fires.length) {
         els.list.innerHTML =
           '<li class="error">Error de red al consultar datos abiertos de la Junta de Castilla y León.</li>';
@@ -390,49 +502,56 @@
     }
   }
 
-  function openPanel() {
-    els.panel.hidden = false;
-  }
-
-  function closePanel() {
-    if (window.matchMedia("(max-width: 820px)").matches) {
-      els.panel.hidden = true;
-    }
+  function showSidebar(show) {
+    els.sidebar.classList.toggle("is-hidden", !show);
   }
 
   function wireUi() {
-    els.btnActivos.addEventListener("click", () => {
-      openPanel();
-      els.list.scrollTop = 0;
-    });
     els.btnRecenter.addEventListener("click", () => {
       map.flyTo({ center: FOCUS.center, zoom: FOCUS.zoom, essential: true });
-    });
-    els.btnClose.addEventListener("click", () => {
-      els.panel.hidden = true;
+      selectFire(null, false);
     });
 
-    const toggle = (btn, layerId, onChange) => {
-      btn.addEventListener("click", () => {
-        const next = btn.getAttribute("aria-pressed") !== "true";
-        btn.setAttribute("aria-pressed", next ? "true" : "false");
-        if (layerId) setLayerVisibility(layerId, next);
-        if (onChange) onChange(next);
-      });
+    els.btnToggleList.addEventListener("click", () => {
+      const hidden = els.sidebar.classList.contains("is-hidden");
+      showSidebar(hidden);
+    });
+
+    els.btnLayers.addEventListener("click", () => {
+      els.layersPanel.classList.toggle("collapsed");
+      els.btnLayers.textContent = els.layersPanel.classList.contains("collapsed") ? "›" : "‹";
+    });
+
+    els.search.addEventListener("input", () => {
+      query = els.search.value || "";
+      renderList();
+      renderMarkers();
+    });
+
+    const bindCheck = (input, onChange) => {
+      const sync = () => {
+        const label = input.closest(".layer-item");
+        if (label) label.classList.toggle("is-on", input.checked);
+        onChange(input.checked);
+      };
+      input.addEventListener("change", sync);
+      sync();
     };
 
-    toggle(els.layerHotspots, "effis-hotspots");
-    toggle(els.layerBurned, "effis-burned");
-    toggle(els.layerOficiales, null, () => renderMarkers());
+    bindCheck(els.layerHotspots, (on) => setLayerVisibility("effis-hotspots", on));
+    bindCheck(els.layerBurned, (on) => setLayerVisibility("effis-burned", on));
+    bindCheck(els.layerOficiales, () => renderMarkers());
+    bindCheck(els.layerSatellite, (on) => setBasemap(on));
 
-    // Desktop: panel open. Mobile: start open so CTA is useful.
-    els.panel.hidden = false;
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      showSidebar(true);
+    }
   }
 
   function boot() {
     if (typeof maplibregl === "undefined") {
       document.body.innerHTML =
-        "<p style='padding:2rem;font-family:sans-serif'>No se pudo cargar MapLibre. Revisa la conexión.</p>";
+        "<p style='padding:2rem;font-family:sans-serif'>No se pudo cargar MapLibre.</p>";
       return;
     }
     initMap();

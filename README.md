@@ -6,10 +6,10 @@ Sitio estático de dos archivos (`index.html` + `index.js`). Sin build. Licencia
 
 ## Datos
 
-- **Castilla y León (León / Salamanca):** partes oficiales del dataset [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (Junta de Castilla y León).
+- **Castilla y León (León / Salamanca):** partes oficiales del dataset [incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) (Junta de Castilla y León), con conteo de operativos / terrestres / aéreos a partir del texto de medios.
 - **Badajoz y contexto satélite:** capas WMS de [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) (hotspots VIIRS y área quemada reciente).
 
-Las detecciones satélite no son despachos de extinción.
+La interfaz sigue el patrón de [fogos.pt](https://fogos.pt): barra naranja, listado en tarjetas, mapa y panel de capas.
 
 ## Uso local
 
