@@ -210,6 +210,17 @@ async function runFireTests(test, testAsync) {
     }
     assert.strictEqual(filtered.length, expect);
   });
+
+  test("pointInSpain keeps peninsula / Balears / Canarias and drops Algeria", () => {
+    assert.ok(FF.pointInSpain(40.4, -3.7), "Madrid");
+    assert.ok(FF.pointInSpain(42.88, -8.54), "Santiago");
+    assert.ok(FF.pointInSpain(39.57, 2.65), "Mallorca");
+    assert.ok(FF.pointInSpain(28.12, -15.43), "Gran Canaria");
+    assert.ok(FF.pointInSpain(43.26, -2.93), "Bilbao");
+    assert.ok(!FF.pointInSpain(36.68, 3.12), "Algiers");
+    assert.ok(!FF.pointInSpain(43.6, 1.44), "Toulouse");
+    assert.ok(!FF.pointInSpain(33.97, -6.85), "Rabat");
+  });
 }
 
 module.exports = { runFireTests };

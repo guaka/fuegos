@@ -8,14 +8,14 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 |--------|--------|------|---------|----------------|-----------------|-------|
 | [JCyL incendios-forestales](https://analisis.datosabiertos.jcyl.es/explore/dataset/incendios-forestales/) | Castilla y León (9 provincias) | Partes oficiales (JSON ODS) | Sí (partes diarios) | Sí (`*`) | **Sí** — puntos + resumen | Filtramos: sin `fecha_extinguido`, estado ACTIVO/CONTROLADO/ESTABILIZADO, parte ≤3 días |
 | [incendios.gal](https://incendios.gal/) API | Galicia | Avisos cidadáns (JSON) | Sí | Sí (`*`) | **Sí** — puntos Galicia | No oficial; filtramos tipos lume/fume/queimada/medios/afectación, ≤14 días |
-| [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) WMS | Europa (toda España) | Hotspots VIIRS + área quemada | Sí (satélite) | Sí (teselas WMS) | **Sí** — capas mapa | Detecciones, **no** despachos de extinción |
-| [fogos.pt](https://fogos.pt) / `api-lb.fogos.pt` | Portugal | Despachos ANEPC (JSON) | Sí | **No** (CORS) desde github.io | Solo **enlace** | API útil con proxy/servidor; no desde SPA estática |
+| [EFFIS / Copernicus EMS](https://forest-fire.emergency.copernicus.eu/) WMS | Europa (toda España) | Hotspots VIIRS + área quemada | Sí (satélite) | Sí (teselas WMS) | **Sí** — capa opcional | Detecciones, **no** despachos de extinción |
+| [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) VIIRS Europe CSV | Europa → filtrado ES | Hotspots satélite (puntos) | Sí (24h) | **No** (CORS) | **Sí** — vía proxy Worker `/firms` | Suomi-NPP + NOAA-20; confianza nominal/high; cluster ~0.05° |
+| [fogos.pt](https://fogos.pt) / `api-lb.fogos.pt` | Portugal | Despachos ANEPC (JSON) | Sí | **No** (CORS) desde github.io | Solo **enlace** (+ Worker `/fires` listo) | API útil con proxy; SPA no la pinta aún |
 | [ppetru/incidents-pt](https://github.com/ppetru/incidents-pt) | Portugal | Espejo scrape ANEPC → JSON en GitHub | ~horario | Sí (raw GitHub) | No (candidato) | Incluye todos los incidentes; filtrar incendios (`Natureza` 31xx) |
 | ICNF `fogos.icnf.pt` webservice | Portugal | Inventario/rural (XML grande) | Histórico / pesado | Variable | No | ~MB de XML; mal encaje para SPA en vivo |
 | ANEPC / prociv ArcGIS | Portugal | Oficial GIS | Sí | A menudo **no** | No | Auth / CORS hostiles para SPA |
 | [EGIF / MITECO](https://www.miteco.gob.es/es/biodiversidad/temas/incendios-forestales/estadisticas-datos.html) | España | Estadística consolidada (partes anuales) | No (histórico) | N/A (buscador/XML) | No | Base nacional de referencia; no feed diario de operaciones |
 | Portales CCAA (WMS/WFS/ArcGIS) | Por comunidad | Riesgo, perímetros históricos, a veces campañas | Variable | Variable | No | Asturias/Cantabria/PV/Navarra sin parte vivo CORS comparable |
-| NASA FIRMS / similares | Global | Hotspots satélite | Sí | Depende del endpoint | No | Solapado con EFFIS para nuestro uso |
 
 ## En uso
 
@@ -33,18 +33,24 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 - **Qué usamos:** avisos con tipos relacionados con lume/fume/queimada/medios/afectación, ≤14 días, con coordenadas.
 - **Importante:** **no es oficial**; es un mapa colaborativo. Complementa EFFIS en Galicia.
 
-### EFFIS / Copernicus (satélite)
+### EFFIS / Copernicus (satélite, teselas)
 
 - **WMS:** `https://maps.effis.emergency.copernicus.eu/effis`
 - **Capas:** `viirs.hs` (hotspots), área quemada.
-- **Cobertura en la app:** toda España navegable; vista por defecto = norte (Galicia → Navarra).
-- **Límite:** un píxel caliente no es un parte de extinción ni un municipio confirmado.
+- **En la app:** capa opcional “Teselas EFFIS” (apagada por defecto).
+
+### NASA FIRMS (satélite, puntos España)
+
+- **Origen:** CSV públicos Europe 24h (Suomi-NPP VIIRS + NOAA-20 VIIRS).
+- **Proxy:** `https://fuegos-proxy.crew.workers.dev/firms` (CORS para github.io; filtra a España, quita `low`, agrupa ~0.05°).
+- **Qué muestra:** detecciones de calor satélite en toda España — **no** son partes municipales ni medios de extinción.
+- **Por qué:** no hay feed nacional diario de partes abiertos; FIRMS cubre el vacío geográfico fuera de CyL/Galicia.
 
 ### fogos.pt (Portugal)
 
 - Referencia de producto e inspiración de UI.
 - En la app: **solo enlace** a [fogos.pt](https://fogos.pt).
-- Su API (`api-lb.fogos.pt/new/fires`) responde bien desde servidor/CI, pero **no envía CORS** usable desde Pages.
+- Worker también expone `GET /fires` (proxy fogos) por si se cablea después.
 
 ## Evaluadas / no integradas (aún)
 
@@ -56,23 +62,24 @@ Inventario de fuentes consideradas para **Fuegos Vivos**, qué aporta cada una y
 | ICNF XML | Oficial ICNF | Volumen enorme; modelo inventarial |
 | ArcGIS ANEPC/prociv | Oficial | CORS / acceso poco amigable para SPA |
 
-### Resto de España
+### Resto de España (partes oficiales)
 
 No hay un feed nacional **diario** abierto tipo “todos los incendios activos con coordenadas y medios”.
 
-- **EGIF (MITECO):** consolidación estadística a partir de partes de las CCAA; buscador y descargas, no mapa operativo en vivo.
-- **CCAA:** muchas publican riesgo de incendio, perímetros de campañas pasadas o WMS/WFS históricos (p. ej. REDIAM Andalucía, servicios de Galicia, Madrid, Castilla-La Mancha, Comunitat Valenciana). Casi ninguna ofrece un JSON de partes activos con CORS comparable al de JCyL.
+- **EGIF (MITECO):** consolidación estadística; no mapa operativo en vivo.
+- **CCAA:** casi ninguna ofrece JSON de partes activos con CORS comparable al de JCyL.
 
-Hasta que exista otra fuente abierta usable en el navegador, el resto de España se cubre con **EFFIS**.
+Hasta que exista otra fuente abierta usable en el navegador, el resto de España se cubre con **FIRMS** (puntos) y opcionalmente **EFFIS** (teselas).
 
 ## Cómo se combina en el mapa
 
 ```text
 ┌─────────────────────────────────────────────┐
-│  Mapa norte ES (MapLibre)                   │
-│  · Capas EFFIS                              │
-│  · Marcadores JCyL (CyL)                    │
+│  Mapa España (MapLibre)                     │
+│  · Puntos FIRMS (toda ES, satélite)         │
+│  · Marcadores JCyL (CyL oficiales)          │
 │  · Marcadores incendios.gal (Galicia)       │
+│  · Capas EFFIS opcionales                   │
 │  · Portugal → enlace fogos.pt               │
 └─────────────────────────────────────────────┘
 ```

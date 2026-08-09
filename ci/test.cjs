@@ -109,9 +109,7 @@ async function main() {
       "Castilla y León",
       "Galicia",
       "toda España",
-      "Cataluña",
-      "Canarias",
-      "Madrid",
+      "FIRMS",
       "incendios.gal",
       "fogos.pt",
       "software experimental de aficionado",
@@ -147,7 +145,7 @@ async function main() {
     }
   });
 
-  test("index.js wires ES + Galicia + EFFIS sources (no fogos.pt API)", () => {
+  test("index.js wires ES + Galicia + FIRMS (no fogos.pt API)", () => {
     const js = read("index.js");
     const html = read("index.html");
     const lib = read("lib/fires.js");
@@ -155,21 +153,24 @@ async function main() {
       "analisis.datosabiertos.jcyl.es",
       "incendios.gal/api/incidencias",
       "maps.effis.emergency.copernicus.eu",
+      "fuegos-proxy.crew.workers.dev/firms",
       "fetchJcylFires",
       "fetchGaliciaFires",
-      "REGION_SECTIONS",
-      "Extremadura",
-      "Andalucía",
-      "Cataluña",
-      "Canarias",
-      "Madrid",
-      "Illes Balears",
-      "Melilla",
-      "Resto de España",
-      "is-sat",
+      "fetchFirmsHotspots",
+      "ensureFirmsLayers",
+      "GALICIA_BBOX",
+      "España · satélite",
+      "is-firms",
+      "flyToFirms",
       "flyToBbox",
+      "mapFlyToLngLat",
+      "canUseMapLibre",
+      "isWebglUsable",
+      "ensureLeaflet",
+      "initLeafletMap",
+      "initMapLibre",
       "maplibregl",
-      "isStyleLoaded",
+      "mapIsReady",
       "markerSizeClass",
       "seriousnessScore",
       "HISTORY_LOOKBACK_DAYS",
@@ -180,15 +181,20 @@ async function main() {
       assert.ok(js.includes(needle), `missing ${needle}`);
     }
     assert.ok(html.includes("./lib/fires.js"));
+    assert.ok(html.includes("layer-firms"));
+    assert.ok(js.includes("leaflet@1.9.4"), "Leaflet CDN for Lockdown/no-WebGL fallback");
+    assert.ok(js.includes("Modo de aislamiento") || html.includes("Modo de aislamiento"));
     assert.ok(lib.includes("OFFICIAL_PROVINCES"));
     assert.ok(lib.includes("LEÓN"));
     assert.ok(lib.includes("fecha_extinguido is null"));
     assert.ok(lib.includes("PARTE_LOOKBACK_DAYS"));
     assert.ok(lib.includes("function mergeHistory"));
+    assert.ok(lib.includes("pointInSpain"));
     assert.ok(js.includes("reduceJcylRows(rows)"));
     assert.ok(js.includes("filterGaliciaRows(rows)"));
     assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"), "default Spain bbox");
-    assert.ok(!js.includes("NORTH_REGIONS"), "renamed to REGION_SECTIONS");
+    assert.ok(!js.includes("REGION_SECTIONS"), "no per-CCAA sat card list");
+    assert.ok(!js.includes("ver mapa"), "no empty ver-mapa sat cards");
     assert.ok(!js.includes("is-empty"), "sat cards must stay clickable (not is-empty)");
     assert.ok(!js.includes("api-lb.fogos.pt"), "must not call fogos.pt API from the browser");
     assert.ok(!js.includes("fetchFogosPtFires"), "must not fetch fogos.pt fires");

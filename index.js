@@ -27,45 +27,15 @@
   } = FF;
 
   /**
-   * Sidebar region sections. kind "galicia" uses incendios.gal; "sat" is EFFIS fly-to.
-   * Sat-only CCAA are one card each (province-level cards looked dead with no live feed).
-   * Keep in sync with about.html coverage narrative.
+   * Sidebar: live CyL + Galicia + one national FIRMS sat card (no per-CCAA fly-to spam).
    */
-  const REGION_SECTIONS = [
-    {
-      title: "Norte de España",
-      regions: [
-        { id: "galicia", name: "Galicia", kind: "galicia", bbox: [-9.35, 41.78, -6.7, 43.8] },
-        { id: "asturias", name: "Asturias", kind: "sat", bbox: [-7.25, 42.85, -4.45, 43.7] },
-        { id: "cantabria", name: "Cantabria", kind: "sat", bbox: [-4.85, 42.75, -3.15, 43.55] },
-        { id: "pais-vasco", name: "País Vasco", kind: "sat", bbox: [-3.45, 42.95, -1.7, 43.5] },
-        { id: "navarra", name: "Navarra", kind: "sat", bbox: [-2.5, 41.85, -0.7, 43.35] },
-        { id: "la-rioja", name: "La Rioja", kind: "sat", bbox: [-3.15, 41.9, -1.7, 42.65] },
-      ],
-    },
-    {
-      title: "Resto de España",
-      regions: [
-        { id: "madrid", name: "Madrid", kind: "sat", bbox: [-4.58, 39.88, -3.05, 41.17] },
-        { id: "castilla-la-mancha", name: "Castilla-La Mancha", kind: "sat", bbox: [-5.45, 38.0, -0.85, 41.35] },
-        { id: "aragon", name: "Aragón", kind: "sat", bbox: [-2.15, 39.85, 0.8, 42.95] },
-        { id: "cataluna", name: "Cataluña", kind: "sat", bbox: [0.15, 40.5, 3.35, 42.9] },
-        { id: "valenciana", name: "C. Valenciana", kind: "sat", bbox: [-1.55, 37.85, 0.7, 40.8] },
-        { id: "murcia", name: "Murcia", kind: "sat", bbox: [-2.35, 37.35, -0.65, 38.75] },
-        { id: "extremadura", name: "Extremadura", kind: "sat", bbox: [-7.55, 37.85, -4.65, 40.48] },
-        { id: "andalucia", name: "Andalucía", kind: "sat", bbox: [-7.6, 35.95, -1.55, 38.55] },
-        { id: "baleares", name: "Illes Balears", kind: "sat", bbox: [1.15, 38.65, 4.35, 40.1] },
-        { id: "canarias", name: "Canarias", kind: "sat", bbox: [-18.2, 27.6, -13.3, 29.5] },
-        { id: "ceuta", name: "Ceuta", kind: "sat", bbox: [-5.42, 35.86, -5.27, 35.92] },
-        { id: "melilla", name: "Melilla", kind: "sat", bbox: [-2.98, 35.26, -2.9, 35.33] },
-      ],
-    },
-  ];
+  const GALICIA_BBOX = [-9.35, 41.78, -6.7, 43.8];
 
   const REFRESH_MS = 5 * 60 * 1000;
   const JCYL_URL =
     "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/incendios-forestales/records";
   const GALICIA_URL = "https://incendios.gal/api/incidencias";
+  const FIRMS_URL = "https://fuegos-proxy.crew.workers.dev/firms";
   const EFFIS_WMS = "https://maps.effis.emergency.copernicus.eu/effis";
 
   const STREET_TILES = [
@@ -90,23 +60,37 @@
     layersPanel: document.getElementById("layers-panel"),
     layerOficiales: document.getElementById("layer-oficiales"),
     layerGalicia: document.getElementById("layer-galicia"),
+    layerFirms: document.getElementById("layer-firms"),
     layerHotspots: document.getElementById("layer-hotspots"),
     layerBurned: document.getElementById("layer-burned"),
     layerRelief: document.getElementById("layer-relief"),
     layerSatellite: document.getElementById("layer-satellite"),
   };
 
-  /** @type {maplibregl.Map} */
-  let map;
+  /** @type {"gl"|"leaflet"|null} */
+  let mapKind = null;
+  /** @type {any} */
+  let map = null;
   /** @type {Array<ReturnType<typeof normalizeFire>>} */
   let fires = [];
   /** @type {string|null} */
   let selectedId = null;
-  /** @type {Map<string, maplibregl.Marker>} */
+  /** @type {Map<string, any>} */
   const markers = new Map();
-  /** @type {maplibregl.Marker|null} */
+  /** @type {any} */
   let userMarker = null;
+  /** @type {any} */
+  let firmsPopup = null;
+  let firmsCount = 0;
+  /** @type {{ type: string, features: any[] }} */
+  let firmsGeo = { type: "FeatureCollection", features: [] };
   let query = "";
+
+  /** Leaflet-only layer handles */
+  /** @type {Record<string, any>} */
+  let Llayers = {};
+  /** @type {any} */
+  let firmsLeafletLayer = null;
 
   function effisTileUrl(layer, withTime) {
     const params = new URLSearchParams({
@@ -211,7 +195,189 @@
     return filterGaliciaRows(rows);
   }
 
-  function initMap() {
+  /** Lockdown Mode / privacy browsers disable WebGL — MapLibre cannot paint. */
+  function isWebglUsable() {
+    try {
+      if (!window.WebGLRenderingContext) return false;
+      const canvas = document.createElement("canvas");
+      const gl =
+        canvas.getContext("webgl2", { failIfMajorPerformanceCaveat: false }) ||
+        canvas.getContext("webgl", { failIfMajorPerformanceCaveat: false }) ||
+        canvas.getContext("experimental-webgl");
+      if (!gl || typeof gl.getParameter !== "function") return false;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function canUseMapLibre() {
+    if (!isWebglUsable()) return false;
+    if (typeof maplibregl === "undefined") return false;
+    try {
+      if (typeof maplibregl.supported === "function") {
+        return !!maplibregl.supported({ failIfMajorPerformanceCaveat: false });
+      }
+    } catch {
+      return false;
+    }
+    return true;
+  }
+
+  function loadStylesheet(href) {
+    return new Promise((resolve, reject) => {
+      if ([...document.styleSheets].some((s) => s.href && s.href.includes("leaflet"))) {
+        resolve();
+        return;
+      }
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      link.onload = () => resolve();
+      link.onerror = () => reject(new Error(`CSS ${href}`));
+      document.head.appendChild(link);
+    });
+  }
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if (typeof L !== "undefined") {
+        resolve();
+        return;
+      }
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error(`Script ${src}`));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureLeaflet() {
+    await loadStylesheet("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
+    await loadScript("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
+    if (typeof L === "undefined") throw new Error("Leaflet no cargó");
+  }
+
+  function mapIsReady() {
+    if (!map) return false;
+    if (mapKind === "gl") return typeof map.isStyleLoaded === "function" ? map.isStyleLoaded() : true;
+    return mapKind === "leaflet";
+  }
+
+  function mapGetZoom() {
+    return map ? map.getZoom() : FOCUS.zoom;
+  }
+
+  function mapFlyToLngLat(lng, lat, zoom) {
+    if (!map) return;
+    const z = zoom == null ? mapGetZoom() : zoom;
+    if (mapKind === "gl") {
+      map.flyTo({ center: [lng, lat], zoom: z, bearing: 0, pitch: 0, essential: true });
+    } else {
+      map.flyTo([lat, lng], z, { duration: 0.6 });
+    }
+  }
+
+  function mapEaseHome() {
+    if (!map) return;
+    if (mapKind === "gl") {
+      map.easeTo({
+        center: FOCUS.center,
+        zoom: FOCUS.zoom,
+        bearing: 0,
+        pitch: 0,
+        essential: true,
+      });
+    } else {
+      map.setView([FOCUS.center[1], FOCUS.center[0]], FOCUS.zoom);
+    }
+  }
+
+  /** @param {[number, number, number, number]} bbox west,south,east,north */
+  function mapFitBbox(bbox, padding, maxZoom) {
+    if (!map || !bbox) return;
+    const pad = padding == null ? 56 : padding;
+    const mz = maxZoom == null ? 9.5 : maxZoom;
+    if (mapKind === "gl") {
+      map.fitBounds(
+        [
+          [bbox[0], bbox[1]],
+          [bbox[2], bbox[3]],
+        ],
+        { padding: pad, maxZoom: mz, essential: true }
+      );
+    } else {
+      map.fitBounds(
+        [
+          [bbox[1], bbox[0]],
+          [bbox[3], bbox[2]],
+        ],
+        { padding: [pad, pad], maxZoom: mz }
+      );
+    }
+  }
+
+  function mapFitLngLats(points, padding, maxZoom) {
+    if (!map || !points.length) return;
+    const pad = padding == null ? 56 : padding;
+    const mz = maxZoom == null ? 9.5 : maxZoom;
+    if (points.length === 1) {
+      mapFlyToLngLat(points[0].lng, points[0].lat, Math.max(mapGetZoom(), 9));
+      return;
+    }
+    if (mapKind === "gl") {
+      const bounds = new maplibregl.LngLatBounds();
+      for (const p of points) bounds.extend([p.lng, p.lat]);
+      map.fitBounds(bounds, { padding: pad, maxZoom: mz, essential: true });
+    } else {
+      const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]));
+      map.fitBounds(bounds, { padding: [pad, pad], maxZoom: mz });
+    }
+  }
+
+  function createHtmlMarker(el, lng, lat) {
+    if (mapKind === "gl") {
+      return new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map);
+    }
+    const icon = L.divIcon({
+      className: "fuegos-marker-wrap",
+      html: "",
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+    });
+    const marker = L.marker([lat, lng], { icon, keyboard: false }).addTo(map);
+    const node = marker.getElement();
+    if (node) {
+      node.innerHTML = "";
+      node.appendChild(el);
+    }
+    marker._fuegosEl = el;
+    return marker;
+  }
+
+  function markerDom(marker) {
+    if (!marker) return null;
+    if (marker._fuegosEl) return marker._fuegosEl;
+    if (typeof marker.getElement === "function") return marker.getElement();
+    return null;
+  }
+
+  function firmsPopupHtml(props) {
+    const p = props || {};
+    const time = String(p.acq_time || "").padStart(4, "0");
+    const hhmm = time.length >= 4 ? `${time.slice(0, 2)}:${time.slice(2, 4)}` : time;
+    return `
+      <strong>Detección satélite</strong><br/>
+      ${escapeHtml(p.acq_date || "—")} ${escapeHtml(hhmm)} UTC<br/>
+      Confianza: ${escapeHtml(p.confidence || "—")} · FRP ${escapeHtml(String(p.frp ?? "—"))}<br/>
+      <em>No es un parte oficial de extinción</em>
+    `;
+  }
+
+  function initMapLibre() {
+    mapKind = "gl";
     map = new maplibregl.Map({
       container: "map",
       style: {
@@ -273,7 +439,7 @@
             id: "effis-hotspots",
             type: "raster",
             source: "effis-hotspots",
-            layout: { visibility: "visible" },
+            layout: { visibility: "none" },
             paint: { "raster-opacity": 0.85 },
           },
         ],
@@ -286,7 +452,6 @@
       dragRotate: false,
       touchPitch: false,
       pitchWithRotate: false,
-      // Península + Baleares + margen; Canarias queda alcanzable al navegar.
       maxBounds: [
         [-19.5, 26.8],
         [5.8, 44.6],
@@ -296,33 +461,289 @@
 
     map.dragRotate.disable();
     map.touchZoomRotate.disableRotation();
-
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     map.on("click", () => selectFire(null, false));
   }
 
+  function initLeafletMap() {
+    mapKind = "leaflet";
+    document.getElementById("map")?.classList.add("is-leaflet");
+    document.querySelector(".map-wrap")?.classList.add("is-leaflet");
+
+    map = L.map("map", {
+      center: [FOCUS.center[1], FOCUS.center[0]],
+      zoom: FOCUS.zoom,
+      zoomControl: false,
+      maxBounds: [
+        [26.8, -19.5],
+        [44.6, 5.8],
+      ],
+      maxBoundsViscosity: 0.85,
+      attributionControl: true,
+    });
+
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+
+    Llayers.street = L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 19,
+        subdomains: "abcd",
+      }
+    );
+    Llayers.satellite = L.tileLayer(SAT_TILES[0], {
+      attribution: "Esri",
+      maxZoom: 19,
+    });
+    Llayers.street.addTo(map);
+
+    Llayers["effis-hotspots"] = L.tileLayer.wms(EFFIS_WMS, {
+      layers: "viirs.hs",
+      styles: "default",
+      format: "image/png",
+      transparent: true,
+      version: "1.1.1",
+      opacity: 0.85,
+      attribution: '<a href="https://forest-fire.emergency.copernicus.eu/">EFFIS</a>',
+      time: `${isoDate(daysAgo(7))}/${isoDate(new Date())}`,
+    });
+    Llayers["effis-burned"] = L.tileLayer.wms(EFFIS_WMS, {
+      layers: "modis.ba.week",
+      styles: "default",
+      format: "image/png",
+      transparent: true,
+      version: "1.1.1",
+      opacity: 0.55,
+      attribution: '<a href="https://forest-fire.emergency.copernicus.eu/">EFFIS</a>',
+    });
+
+    firmsLeafletLayer = L.layerGroup();
+    if (els.layerFirms && els.layerFirms.checked) firmsLeafletLayer.addTo(map);
+
+    map.on("click", () => selectFire(null, false));
+
+    // Hillshade needs WebGL — hide control in compatible mode.
+    if (els.layerRelief) {
+      const item = els.layerRelief.closest(".layer-item");
+      if (item) item.hidden = true;
+      els.layerRelief.checked = false;
+    }
+
+    if (els.status) {
+      els.status.textContent =
+        "Mapa compatible (sin WebGL — p. ej. Modo de aislamiento). Capas raster activas.";
+    }
+
+    requestAnimationFrame(() => {
+      try {
+        map.invalidateSize();
+      } catch {
+        /* ignore */
+      }
+    });
+    window.addEventListener(
+      "resize",
+      () => {
+        try {
+          map.invalidateSize();
+        } catch {
+          /* ignore */
+        }
+      },
+      { passive: true }
+    );
+  }
+
+  function ensureFirmsLayers() {
+    if (mapKind === "leaflet") {
+      setFirmsVisibility(!!(els.layerFirms && els.layerFirms.checked));
+      return;
+    }
+    if (!map.getSource("firms")) {
+      map.addSource("firms", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+        attribution:
+          '<a href="https://firms.modaps.eosdis.nasa.gov/">NASA FIRMS</a> VIIRS',
+      });
+      map.addLayer({
+        id: "firms-glow",
+        type: "circle",
+        source: "firms",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 4, 8, 10, 12, 16],
+          "circle-color": "#ff6e02",
+          "circle-opacity": 0.22,
+          "circle-blur": 0.55,
+        },
+      });
+      map.addLayer({
+        id: "firms-points",
+        type: "circle",
+        source: "firms",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 2.5, 8, 5, 12, 8],
+          "circle-color": [
+            "match",
+            ["get", "confidence"],
+            "high",
+            "#d9480f",
+            "nominal",
+            "#ff6e02",
+            "#f0a060",
+          ],
+          "circle-stroke-width": 1.25,
+          "circle-stroke-color": "#fff8f0",
+          "circle-opacity": 0.92,
+        },
+      });
+
+      map.on("click", "firms-points", (e) => {
+        e.originalEvent.stopPropagation();
+        const f = e.features && e.features[0];
+        if (!f) return;
+        if (!firmsPopup) {
+          firmsPopup = new maplibregl.Popup({ closeButton: true, maxWidth: "260px" });
+        }
+        firmsPopup.setLngLat(e.lngLat).setHTML(firmsPopupHtml(f.properties)).addTo(map);
+      });
+      map.on("mouseenter", "firms-points", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "firms-points", () => {
+        map.getCanvas().style.cursor = "";
+      });
+    }
+    setFirmsVisibility(!!(els.layerFirms && els.layerFirms.checked));
+  }
+
+  function setFirmsVisibility(visible) {
+    if (mapKind === "leaflet") {
+      if (!firmsLeafletLayer || !map) return;
+      if (visible) {
+        if (!map.hasLayer(firmsLeafletLayer)) firmsLeafletLayer.addTo(map);
+      } else if (map.hasLayer(firmsLeafletLayer)) {
+        map.removeLayer(firmsLeafletLayer);
+      }
+      return;
+    }
+    setLayerVisibility("firms-glow", visible);
+    setLayerVisibility("firms-points", visible);
+  }
+
+  function setFirmsData(geojson) {
+    const fc =
+      geojson && geojson.type === "FeatureCollection"
+        ? geojson
+        : { type: "FeatureCollection", features: [] };
+    firmsGeo = fc;
+    firmsCount = Array.isArray(fc.features) ? fc.features.length : 0;
+
+    if (mapKind === "leaflet") {
+      if (firmsLeafletLayer) firmsLeafletLayer.clearLayers();
+      else firmsLeafletLayer = L.layerGroup();
+      L.geoJSON(fc, {
+        pointToLayer: (feature, latlng) => {
+          const conf = (feature.properties && feature.properties.confidence) || "";
+          const color = conf === "high" ? "#d9480f" : "#ff6e02";
+          return L.circleMarker(latlng, {
+            radius: 5,
+            color: "#fff8f0",
+            weight: 1.25,
+            fillColor: color,
+            fillOpacity: 0.92,
+          });
+        },
+        onEachFeature: (feature, layer) => {
+          layer.bindPopup(firmsPopupHtml(feature.properties));
+          layer.on("click", (e) => {
+            if (e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
+          });
+        },
+      }).addTo(firmsLeafletLayer);
+      setFirmsVisibility(!!(els.layerFirms && els.layerFirms.checked));
+      return;
+    }
+
+    const src = map && map.getSource("firms");
+    if (src && typeof src.setData === "function") src.setData(fc);
+  }
+
+  function flyToFirms() {
+    if (!map) return;
+    const feats = (firmsGeo.features || []).filter(
+      (f) => f.geometry && Array.isArray(f.geometry.coordinates)
+    );
+    if (!feats.length) {
+      mapFitBbox(FOCUS.bbox, 48, 6.5);
+      return;
+    }
+    mapFitLngLats(
+      feats.map((f) => ({ lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] })),
+      56,
+      7.5
+    );
+  }
+
   function setLayerVisibility(layerId, visible) {
-    if (!map.getLayer(layerId)) return;
+    if (mapKind === "leaflet") {
+      const layer = Llayers[layerId];
+      if (!layer || !map) return;
+      if (visible) {
+        if (!map.hasLayer(layer)) layer.addTo(map);
+      } else if (map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      }
+      return;
+    }
+    if (!map || !map.getLayer(layerId)) return;
     map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
   }
 
   function setBasemap(satellite) {
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map || !mapIsReady()) return;
+    if (mapKind === "leaflet") {
+      if (satellite) {
+        if (map.hasLayer(Llayers.street)) map.removeLayer(Llayers.street);
+        if (!map.hasLayer(Llayers.satellite)) Llayers.satellite.addTo(map);
+      } else {
+        if (map.hasLayer(Llayers.satellite)) map.removeLayer(Llayers.satellite);
+        if (!map.hasLayer(Llayers.street)) Llayers.street.addTo(map);
+      }
+      return;
+    }
     const src = map.getSource("basemap");
     if (!src || typeof src.setTiles !== "function") return;
     src.setTiles(satellite ? SAT_TILES : STREET_TILES);
   }
 
   function applyLayerChecks() {
-    if (!map || !map.isStyleLoaded()) return;
-    setLayerVisibility("effis-hotspots", els.layerHotspots.checked);
-    setLayerVisibility("effis-burned", els.layerBurned.checked);
-    setLayerVisibility("relief", !!(els.layerRelief && els.layerRelief.checked));
-    setBasemap(els.layerSatellite.checked);
+    if (!map || !mapIsReady()) return;
+    setFirmsVisibility(!!(els.layerFirms && els.layerFirms.checked));
+    setLayerVisibility("effis-hotspots", !!(els.layerHotspots && els.layerHotspots.checked));
+    setLayerVisibility("effis-burned", !!(els.layerBurned && els.layerBurned.checked));
+    if (mapKind === "gl") {
+      setLayerVisibility("relief", !!(els.layerRelief && els.layerRelief.checked));
+    }
+    setBasemap(!!(els.layerSatellite && els.layerSatellite.checked));
+  }
+
+  async function fetchFirmsHotspots() {
+    const res = await fetch(FIRMS_URL, { headers: { Accept: "application/geo+json, application/json" } });
+    if (!res.ok) throw new Error(`FIRMS proxy HTTP ${res.status}`);
+    return res.json();
   }
 
   function clearMarkers() {
-    for (const m of markers.values()) m.remove();
+    for (const m of markers.values()) {
+      if (mapKind === "leaflet" && map) {
+        map.removeLayer(m);
+      } else if (m && typeof m.remove === "function") {
+        m.remove();
+      }
+    }
     markers.clear();
   }
 
@@ -349,21 +770,18 @@
     const fire = fires.find((f) => f.id === id) || null;
 
     for (const [mid, marker] of markers) {
-      const el = marker.getElement();
+      const el = markerDom(marker);
+      if (!el) continue;
       const on = mid === id;
       el.classList.toggle("is-selected", on);
       const wrap = el.parentElement;
-      if (wrap) wrap.style.zIndex = on ? "6" : "";
+      if (wrap) wrap.style.zIndex = on ? "600" : "";
     }
 
     renderSidebar();
 
     if (fire && fly && fire.lat != null && fire.lng != null) {
-      map.flyTo({
-        center: [fire.lng, fire.lat],
-        zoom: Math.max(map.getZoom(), 10),
-        essential: true,
-      });
+      mapFlyToLngLat(fire.lng, fire.lat, Math.max(mapGetZoom(), 10));
       showSidebar(true);
     }
 
@@ -450,31 +868,14 @@
   function flyToFires(regionFires) {
     const pts = regionFires.filter((f) => f.lat != null && f.lng != null);
     if (!pts.length || !map) return;
-    if (pts.length === 1) {
-      map.flyTo({ center: [pts[0].lng, pts[0].lat], zoom: Math.max(map.getZoom(), 9), essential: true });
-      return;
-    }
-    const bounds = new maplibregl.LngLatBounds();
-    for (const f of pts) bounds.extend([f.lng, f.lat]);
-    map.fitBounds(bounds, { padding: 72, maxZoom: 9.5, essential: true });
+    mapFitLngLats(pts, 72, 9.5);
   }
 
   function flyToBbox(bbox, label) {
     if (!map || !bbox) return;
-    // Sat regions only have EFFIS pixels — make that layer visible when navigating.
-    if (els.layerHotspots && !els.layerHotspots.checked) {
-      els.layerHotspots.checked = true;
-      applyLayerChecks();
-    }
-    map.fitBounds(
-      [
-        [bbox[0], bbox[1]],
-        [bbox[2], bbox[3]],
-      ],
-      { padding: 56, maxZoom: 9.5, essential: true }
-    );
+    mapFitBbox(bbox, 56, 9.5);
     if (label && els.status) {
-      els.status.textContent = `${label}: sin partes oficiales en vivo — hotspots EFFIS en el mapa.`;
+      els.status.textContent = `${label}: acercando en el mapa.`;
     }
   }
 
@@ -499,18 +900,18 @@
         e.stopPropagation();
         selectFire(fire.id, true);
       });
-      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
-        .setLngLat([fire.lng, fire.lat])
-        .addTo(map);
+      const marker = createHtmlMarker(el, fire.lng, fire.lat);
       markers.set(fire.id, marker);
     });
 
     if (selectedId) {
       const marker = markers.get(selectedId);
       if (marker) {
-        const el = marker.getElement();
-        el.classList.add("is-selected");
-        if (el.parentElement) el.parentElement.style.zIndex = "6";
+        const el = markerDom(marker);
+        if (el) {
+          el.classList.add("is-selected");
+          if (el.parentElement) el.parentElement.style.zIndex = "600";
+        }
       }
     }
   }
@@ -702,45 +1103,51 @@
     });
   }
 
-  function renderSatRegionCard(region, i, gaFires) {
+  function renderSatNationCard() {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "region-card is-firms";
+    btn.innerHTML = `
+      <div class="region-head">
+        <h3 class="region-name">España · satélite</h3>
+        <span class="region-count"><strong>${firmsCount}</strong> detección${firmsCount === 1 ? "" : "es"}</span>
+      </div>
+      <p class="region-meta">VIIRS 24h (NASA FIRMS) en todo el mapa — no son partes oficiales</p>
+    `;
+    btn.addEventListener("click", () => {
+      if (els.layerFirms && !els.layerFirms.checked) {
+        els.layerFirms.checked = true;
+        els.layerFirms.closest(".layer-item")?.classList.toggle("is-on", true);
+        setFirmsVisibility(true);
+      }
+      flyToFirms();
+      showSidebar(true);
+    });
+    appendListItem(btn);
+  }
+
+  function renderGaliciaCard(gaFires) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "region-card";
-    btn.style.animationDelay = `${Math.min(i, 12) * 0.03}s`;
-
-    if (region.kind === "galicia") {
-      const n = gaFires.length;
-      if (!n) btn.classList.add("is-sat");
-      btn.innerHTML = `
-        <div class="region-head">
-          <h3 class="region-name">${escapeHtml(region.name)}</h3>
-          <span class="region-count"><strong>${n}</strong> aviso${n === 1 ? "" : "s"}</span>
-        </div>
-        <p class="region-meta">${
-          n
-            ? "Avisos cidadáns recientes (incendios.gal) — no oficiales"
-            : "Pulsa para acercar · avisos cidadáns + EFFIS"
-        }</p>
-      `;
-      btn.addEventListener("click", () => {
-        if (gaFires.length) flyToFires(gaFires);
-        else flyToBbox(region.bbox, region.name);
-        showSidebar(true);
-      });
-    } else {
-      btn.classList.add("is-sat");
-      btn.innerHTML = `
-        <div class="region-head">
-          <h3 class="region-name">${escapeHtml(region.name)}</h3>
-          <span class="region-count">ver mapa</span>
-        </div>
-        <p class="region-meta">Pulsa para acercar · hotspots satélite EFFIS (sin parte oficial)</p>
-      `;
-      btn.addEventListener("click", () => {
-        flyToBbox(region.bbox, region.name);
-        showSidebar(true);
-      });
-    }
+    const n = gaFires.length;
+    if (!n) btn.classList.add("is-sat");
+    btn.innerHTML = `
+      <div class="region-head">
+        <h3 class="region-name">Galicia</h3>
+        <span class="region-count"><strong>${n}</strong> aviso${n === 1 ? "" : "s"}</span>
+      </div>
+      <p class="region-meta">${
+        n
+          ? "Avisos cidadáns recientes (incendios.gal) — no oficiales"
+          : "Pulsa para acercar · avisos cidadáns + satélite"
+      }</p>
+    `;
+    btn.addEventListener("click", () => {
+      if (gaFires.length) flyToFires(gaFires);
+      else flyToBbox(GALICIA_BBOX, "Galicia");
+      showSidebar(true);
+    });
     appendListItem(btn);
   }
 
@@ -794,21 +1201,24 @@
     const cylFires = list.filter((f) => f.source === "JCyL");
     const gaFires = list.filter((f) => f.source === "incendios.gal");
 
-    // Live official parts first — sat cards used to bury them.
+    const nation = document.createElement("p");
+    nation.className = "panel-title";
+    nation.textContent = "Toda España";
+    appendListItem(nation);
+    renderSatNationCard();
+
     renderCylSection(cylFires);
 
-    REGION_SECTIONS.forEach((section) => {
-      const title = document.createElement("p");
-      title.className = "panel-title";
-      title.textContent = section.title;
-      appendListItem(title);
-      section.regions.forEach((region, i) => renderSatRegionCard(region, i, gaFires));
-    });
+    const gaTitle = document.createElement("p");
+    gaTitle.className = "panel-title";
+    gaTitle.textContent = "Galicia · avisos cidadáns";
+    appendListItem(gaTitle);
+    renderGaliciaCard(gaFires);
 
     const sat = document.createElement("p");
     sat.className = "overview-note";
     sat.innerHTML =
-      "Fuera de CyL no hay parte diario abierto comparable — las tarjetas acercan el mapa a EFFIS. Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a> (cidadán).";
+      "Fuera de CyL no hay parte diario nacional abierto: el mapa muestra <strong>detecciones FIRMS</strong> (calor satélite). Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a>.";
     appendListItem(sat);
 
     const pt = document.createElement("p");
@@ -850,11 +1260,12 @@
     const hot = visible.filter((f) => f.statusClass === "activo").length;
     const now = new Date();
     const hhmm = now.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    const firmsOn = !(els.layerFirms && !els.layerFirms.checked);
     els.ticker.textContent =
       `${hhmm} — ${cyl} CyL` +
       `${ga ? ` · ${ga} Galicia` : ""}` +
       `${hot ? ` · ${hot} activos` : ""}` +
-      ` · resto ES: capa Hotspots (no hay parte nacional)`;
+      `${firmsOn && firmsCount ? ` · ${firmsCount} satélite ES` : ""}`;
   }
 
   function escapeHtml(value) {
@@ -877,21 +1288,32 @@
   }
 
   async function refresh() {
-    els.status.textContent = "Actualizando CyL y Galicia…";
+    els.status.textContent = "Actualizando CyL, Galicia y satélite España…";
     try {
-      const [esResult, gaResult] = await Promise.allSettled([fetchJcylFires(), fetchGaliciaFires()]);
+      const [esResult, gaResult, firmsResult] = await Promise.allSettled([
+        fetchJcylFires(),
+        fetchGaliciaFires(),
+        fetchFirmsHotspots(),
+      ]);
       const esFires = esResult.status === "fulfilled" ? esResult.value : [];
       const gaFires = gaResult.status === "fulfilled" ? gaResult.value : [];
       if (esResult.status === "rejected") console.error(esResult.reason);
       if (gaResult.status === "rejected") console.error(gaResult.reason);
+      if (firmsResult.status === "rejected") console.error(firmsResult.reason);
+
+      if (firmsResult.status === "fulfilled") {
+        setFirmsData(firmsResult.value);
+      } else {
+        setFirmsData({ type: "FeatureCollection", features: [] });
+      }
 
       fires = [...esFires, ...gaFires].sort(compareFires);
       const notes = [];
       if (esResult.status === "rejected") notes.push("CyL falló");
       if (gaResult.status === "rejected") notes.push("Galicia falló");
+      if (firmsResult.status === "rejected") notes.push("FIRMS falló");
       els.status.textContent =
-        `Puntos: CyL ${esFires.length} oficiales · Galicia ${gaFires.length} avisos. ` +
-        `Asturias/Madrid/etc. no tienen feed de partes en el mapa — usa Hotspots EFFIS. ` +
+        `Mapa España: ${firmsCount} detecciones satélite (FIRMS) · CyL ${esFires.length} oficiales · Galicia ${gaFires.length} avisos. ` +
         `Actualizado ${formatUpdated(new Date())}` +
         (notes.length ? ` · ${notes.join(", ")}` : "");
 
@@ -903,9 +1325,9 @@
       const hashId = decodeURIComponent((location.hash || "").replace(/^#/, ""));
       if (hashId && fires.some((f) => f.id === hashId)) selectFire(hashId, true);
 
-      if (!fires.length && esResult.status === "rejected" && gaResult.status === "rejected") {
+      if (!fires.length && esResult.status === "rejected" && gaResult.status === "rejected" && firmsResult.status === "rejected") {
         els.list.innerHTML =
-          '<li class="error">No se pudieron cargar CyL ni Galicia.</li>';
+          '<li class="error">No se pudieron cargar los datos.</li>';
       }
     } catch (err) {
       console.error(err);
@@ -929,8 +1351,10 @@
       const el = document.createElement("div");
       el.className = "user-location";
       el.setAttribute("aria-hidden", "true");
-      userMarker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map);
-    } else {
+      userMarker = createHtmlMarker(el, lng, lat);
+    } else if (mapKind === "leaflet" && typeof userMarker.setLatLng === "function") {
+      userMarker.setLatLng([lat, lng]);
+    } else if (typeof userMarker.setLngLat === "function") {
       userMarker.setLngLat([lng, lat]);
     }
   }
@@ -952,13 +1376,7 @@
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setUserLocation(lng, lat);
-        map.flyTo({
-          center: [lng, lat],
-          zoom: Math.max(map.getZoom(), 10),
-          bearing: 0,
-          pitch: 0,
-          essential: true,
-        });
+        mapFlyToLngLat(lng, lat, Math.max(mapGetZoom(), 10));
         els.status.textContent = "Mapa centrado en tu ubicación.";
         if (els.btnLocate) {
           els.btnLocate.disabled = false;
@@ -983,13 +1401,7 @@
   function wireUi() {
     if (els.btnRecenter) {
       els.btnRecenter.addEventListener("click", () => {
-        map.easeTo({
-          center: FOCUS.center,
-          zoom: FOCUS.zoom,
-          bearing: 0,
-          pitch: 0,
-          essential: true,
-        });
+        mapEaseHome();
         selectFire(null, false);
       });
     }
@@ -1034,6 +1446,14 @@
       els.layerHotspots.closest(".layer-item")?.classList.toggle("is-on", on);
       setLayerVisibility("effis-hotspots", on);
     });
+    if (els.layerFirms) {
+      els.layerFirms.addEventListener("change", () => {
+        const on = els.layerFirms.checked;
+        els.layerFirms.closest(".layer-item")?.classList.toggle("is-on", on);
+        setFirmsVisibility(on);
+        updateTicker();
+      });
+    }
     els.layerBurned.addEventListener("change", () => {
       const on = els.layerBurned.checked;
       els.layerBurned.closest(".layer-item")?.classList.toggle("is-on", on);
@@ -1069,31 +1489,55 @@
     });
 
     // Initial chip styles
-    [els.layerOficiales, els.layerGalicia, els.layerHotspots, els.layerBurned, els.layerRelief, els.layerSatellite].forEach(
-      (input) => {
-        if (!input) return;
-        input.closest(".layer-item")?.classList.toggle("is-on", input.checked);
-      }
-    );
+    [
+      els.layerOficiales,
+      els.layerGalicia,
+      els.layerFirms,
+      els.layerHotspots,
+      els.layerBurned,
+      els.layerRelief,
+      els.layerSatellite,
+    ].forEach((input) => {
+      if (!input) return;
+      input.closest(".layer-item")?.classList.toggle("is-on", input.checked);
+    });
 
     if (window.matchMedia("(max-width: 900px)").matches) {
       showSidebar(true);
     }
   }
 
-  function boot() {
-    if (typeof maplibregl === "undefined") {
-      document.body.innerHTML =
-        "<p style='padding:2rem;font-family:sans-serif'>No se pudo cargar MapLibre.</p>";
-      return;
-    }
-    initMap();
+  async function boot() {
     wireUi();
-    map.on("load", () => {
+    const startData = () => {
+      ensureFirmsLayers();
       applyLayerChecks();
       refresh();
       setInterval(refresh, REFRESH_MS);
-    });
+    };
+
+    try {
+      if (canUseMapLibre()) {
+        initMapLibre();
+        map.on("load", startData);
+        return;
+      }
+
+      // iPhone Lockdown Mode and other no-WebGL browsers: Leaflet raster map.
+      await ensureLeaflet();
+      initLeafletMap();
+      startData();
+    } catch (err) {
+      console.error(err);
+      const mapEl = document.getElementById("map");
+      if (mapEl) {
+        mapEl.innerHTML =
+          "<p style='padding:1.5rem;font-family:sans-serif;max-width:28rem'>No se pudo iniciar el mapa. En iPhone con Modo de aislamiento, prueba recargar; si sigue fallando, excluye este sitio del modo o usa otro navegador.</p>";
+      }
+      if (els.status) {
+        els.status.innerHTML = '<span class="error">Mapa no disponible en este navegador.</span>';
+      }
+    }
   }
 
   if (document.readyState === "loading") {

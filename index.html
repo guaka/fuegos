@@ -235,6 +235,11 @@
       color: var(--orange);
       font-weight: 700;
     }
+    .region-card.is-firms {
+      border: 1px solid rgba(217, 72, 15, 0.4);
+      background: linear-gradient(180deg, #fff8f2 0%, var(--card) 75%);
+    }
+    .region-card.is-firms .region-name { color: #c2410c; }
     .region-head {
       display: flex;
       align-items: baseline;
@@ -697,6 +702,36 @@
       border-top: 1px solid #ddd;
     }
 
+    /* Leaflet fallback (Lockdown Mode / no WebGL) */
+    #map.is-leaflet,
+    .map-wrap.is-leaflet #map {
+      background: #e4e0d8;
+    }
+    .leaflet-container {
+      width: 100%;
+      height: 100%;
+      font: inherit;
+      background: #e4e0d8;
+      z-index: 0;
+    }
+    .fuegos-marker-wrap {
+      background: transparent !important;
+      border: none !important;
+    }
+    .fuegos-marker-wrap .map-marker,
+    .fuegos-marker-wrap .user-location {
+      transform: translate(-50%, -50%);
+    }
+    .map-wrap.is-leaflet .leaflet-control-zoom {
+      margin-bottom: 4.5rem;
+      margin-right: 0.65rem;
+    }
+    .leaflet-popup-content {
+      font-size: 0.85rem;
+      line-height: 1.35;
+      margin: 0.65rem 0.85rem;
+    }
+
     @keyframes rise {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
@@ -754,11 +789,12 @@
         <span><i class="dot controlado"></i> Controlado</span>
         <span><i class="dot estabilizado"></i> Estabilizado</span>
       </div>
-      <p class="legend-hint">Los puntos son solo CyL (oficial) y Galicia (cidadán). El resto de España no publica un parte vivo usable — mira la capa Hotspots. Pulsa un punto para el detalle.</p>
+      <p class="legend-hint">Naranja satélite = detecciones FIRMS en toda España (no partes oficiales). Puntos CyL = oficiales; Galicia = avisos cidadáns. Pulsa un punto para el detalle.</p>
       <ul class="fire-list" id="fire-list"></ul>
       <p class="footnote">
         ES: partes JCyL (CyL) + avisos cidadáns <a href="https://incendios.gal/" rel="noopener" target="_blank">incendios.gal</a> (Galicia).
-        Resto de CCAA: EFFIS/Copernicus.
+        Resto de España: detecciones satélite FIRMS (y EFFIS opcional).
+        En iPhone con Modo de aislamiento el mapa usa teselas (sin WebGL).
         Portugal: ver <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a>.
         <a href="./about.html">Sobre la cobertura</a> ·
         <a href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a> ·
@@ -794,7 +830,8 @@
         <div class="layers-body">
           <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> Oficiales CyL (ES)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-galicia" checked /> Galicia (incendios.gal)</label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-hotspots" checked /> Hotspots satélite</label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-firms" checked /> Detecciones satélite (FIRMS)</label>
+          <label class="layer-item"><input type="checkbox" id="layer-hotspots" /> Teselas EFFIS</label>
           <label class="layer-item"><input type="checkbox" id="layer-burned" /> Área quemada</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-relief" checked /> Relieve</label>
           <label class="layer-item"><input type="checkbox" id="layer-satellite" /> Vista satélite</label>
