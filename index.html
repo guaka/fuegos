@@ -8,7 +8,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Fuegos Vivos — mapa de incendios en el norte de España (CyL, Galicia y satélite)." />
+  <meta name="description" content="Fuegos Vivos — mapa de incendios: norte, Extremadura, Andalucía y CyL." />
   <title>Fuegos Vivos</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -417,6 +417,46 @@
       padding-top: 0.75rem;
       border-top: 1px solid var(--line);
     }
+    .chart-block {
+      margin-top: 0.95rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--line);
+    }
+    .resources-chart {
+      display: block;
+      width: 100%;
+      height: auto;
+      margin-top: 0.35rem;
+    }
+    .chart-tick {
+      font-size: 9px;
+      fill: #888;
+    }
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem 0.85rem;
+      margin-top: 0.35rem;
+      font-size: 0.72rem;
+      color: var(--ink-muted);
+    }
+    .chart-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .chart-legend i {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .chart-note, .chart-empty {
+      margin: 0.35rem 0 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
     .asset {
       display: inline-flex;
       align-items: center;
@@ -647,11 +687,11 @@
         <span><i class="dot controlado"></i> Controlado</span>
         <span><i class="dot estabilizado"></i> Estabilizado</span>
       </div>
-      <p class="legend-hint">Norte: Galicia (avisos cidadáns) + CCAA vía satélite; CyL con partes oficiales. Pulsa un punto del mapa para el detalle.</p>
+      <p class="legend-hint">Norte, Extremadura y Andalucía en el resumen (EFFIS / Galicia cidadá); CyL con partes oficiales. Pulsa un punto del mapa para el detalle.</p>
       <ul class="fire-list" id="fire-list"></ul>
       <p class="footnote">
         ES: partes JCyL (CyL) + avisos cidadáns <a href="https://incendios.gal/" rel="noopener" target="_blank">incendios.gal</a> (Galicia).
-        Norte y resto: EFFIS/Copernicus.
+        Extremadura, Andalucía y resto: EFFIS/Copernicus.
         Portugal: ver <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a>.
         <a href="./about.html">Sobre la cobertura</a> ·
         <a href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a> ·
@@ -671,6 +711,7 @@
           <label class="layer-item is-on"><input type="checkbox" id="layer-galicia" checked /> Galicia (incendios.gal)</label>
           <label class="layer-item is-on"><input type="checkbox" id="layer-hotspots" checked /> Hotspots satélite</label>
           <label class="layer-item"><input type="checkbox" id="layer-burned" /> Área quemada</label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-relief" checked /> Relieve</label>
           <label class="layer-item"><input type="checkbox" id="layer-satellite" /> Vista satélite</label>
           <p class="layers-note">Portugal → <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a></p>
         </div>

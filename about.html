@@ -8,7 +8,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="Sobre Fuegos Vivos — foco en el norte de España (Galicia, Cornisa, CyL)." />
+  <meta name="description" content="Sobre Fuegos Vivos — norte, Extremadura, Andalucía y CyL." />
   <title>Sobre — Fuegos Vivos</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -247,6 +247,32 @@
     }
     .sources p:last-child { margin-bottom: 0; }
 
+    .page-foot {
+      display: flex;
+      justify-content: center;
+      padding: 0.25rem 0 0.5rem;
+    }
+    .gh-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      color: var(--ink-muted);
+      transition: color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+    .gh-icon:hover {
+      color: var(--ink);
+      background: rgba(0, 0, 0, 0.05);
+      transform: translateY(-1px);
+    }
+    .gh-icon svg {
+      width: 1.35rem;
+      height: 1.35rem;
+      fill: currentColor;
+    }
+
     @keyframes rise {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -266,18 +292,18 @@
     </a>
     <div class="top-spacer"></div>
     <a class="top-btn" href="./">Mapa</a>
-    <a class="top-btn" href="https://github.com/guaka/fuegos" rel="noopener" target="_blank">GitHub</a>
   </header>
 
   <main>
     <section class="hero">
       <h1>Sobre Fuegos Vivos</h1>
       <p>
-        Mapa público de incendios con foco en el <strong>norte de España</strong>:
-        Galicia, Asturias, Cantabria, País Vasco, Navarra, La Rioja y Castilla y León.
+        Mapa público de incendios en el <strong>oeste y el norte de España</strong>:
+        Galicia y la cornisa, Castilla y León, <strong>Extremadura</strong> (Cáceres y Badajoz)
+        y <strong>Andalucía</strong> entera.
         Partes oficiales (JCyL), avisos cidadáns en Galicia
         (<a href="https://incendios.gal/" rel="noopener">incendios.gal</a>)
-        y satélite EFFIS en el resto. Puedes navegar por toda la península.
+        y satélite EFFIS donde no hay feed abierto.
         Inspirado en <a href="https://fogos.pt" rel="noopener">fogos.pt</a>.
       </p>
     </section>
@@ -286,7 +312,7 @@
       <section class="panel" aria-labelledby="coverage-title">
         <h2 id="coverage-title">Regiones cubiertas</h2>
         <p>
-          La vista por defecto cubre la cornisa cantábrica y el noroeste.
+          La vista por defecto cubre de Galicia a Andalucía por el oeste.
           No hay un único feed oficial de despachos para toda España en abierto.
         </p>
         <ul>
@@ -301,18 +327,23 @@
             <strong>Galicia</strong> —
             avisos colaborativos de
             <a href="https://incendios.gal/" rel="noopener">incendios.gal</a>
-            (no oficiales; CORS abierto). Lume/fume/queimada recientes.
+            (no oficiales; CORS abierto).
+          </li>
+          <li>
+            <span class="badge sat">SAT</span>
+            <strong>Extremadura</strong> —
+            Cáceres y Badajoz. Sin parte diario abierto comparable — EFFIS.
+          </li>
+          <li>
+            <span class="badge sat">SAT</span>
+            <strong>Andalucía</strong> —
+            Huelva, Sevilla, Cádiz, Málaga, Córdoba, Jaén, Granada y Almería — EFFIS
+            (REDIAM/INFOCA históricos no son un feed vivo usable aquí).
           </li>
           <li>
             <span class="badge sat">SAT</span>
             <strong>Resto del norte</strong> —
-            Asturias, Cantabria, País Vasco, Navarra y La Rioja vía EFFIS
-            (sin parte diario abierto comparable).
-          </li>
-          <li>
-            <span class="badge sat">SAT</span>
-            <strong>Resto de España</strong> —
-            navegable; hotspots EFFIS. Canarias al desplazarte.
+            Asturias, Cantabria, País Vasco, Navarra y La Rioja vía EFFIS.
           </li>
           <li>
             <span class="badge pt">PT</span>
@@ -352,11 +383,24 @@
       </p>
       <p>
         Las detecciones satélite no son despachos de extinción. El código es
-        <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>
-        —
-        <a href="https://github.com/guaka/fuegos" rel="noopener">github.com/guaka/fuegos</a>.
+        <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>.
       </p>
     </section>
+
+    <div class="page-foot">
+      <a
+        class="gh-icon"
+        href="https://github.com/guaka/fuegos"
+        rel="noopener"
+        target="_blank"
+        aria-label="GitHub — guaka/fuegos"
+        title="GitHub"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.52 2.87 8.35 6.84 9.71.5.1.68-.22.68-.49 0-.24-.01-.87-.01-1.71-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.73 0 0 .84-.27 2.75 1.05A9.3 9.3 0 0 1 12 7.5c.85 0 1.71.12 2.51.35 1.9-1.32 2.74-1.05 2.74-1.05.55 1.42.2 2.47.1 2.73.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.6.69.49A10.03 10.03 0 0 0 22 12.26C22 6.58 17.52 2 12 2z"/>
+        </svg>
+      </a>
+    </div>
   </main>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>

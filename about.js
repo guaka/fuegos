@@ -2,20 +2,20 @@
 (function () {
   "use strict";
 
-  // Keep in sync with FOCUS.bbox in index.js (norte: Galicia → Navarra)
-  const BBOX = [-9.4, 41.0, -0.6, 43.9]; // west,south,east,north
-  const CENTER = [-5.8, 42.55];
+  // Keep in sync with FOCUS.bbox in index.js (oeste: Galicia → Andalucía)
+  const BBOX = [-9.4, 35.95, -0.6, 43.9]; // west,south,east,north
+  const CENTER = [-5.5, 40.0];
 
   const PLACES = [
     { name: "Santiago", country: "ES", lng: -8.54, lat: 42.88 },
-    { name: "Ourense", country: "ES", lng: -7.86, lat: 42.34 },
     { name: "Oviedo", country: "ES", lng: -5.84, lat: 43.36 },
-    { name: "Santander", country: "ES", lng: -3.81, lat: 43.46 },
     { name: "Bilbao", country: "ES", lng: -2.93, lat: 43.26 },
-    { name: "Pamplona", country: "ES", lng: -1.64, lat: 42.81 },
-    { name: "Logroño", country: "ES", lng: -2.45, lat: 42.46 },
     { name: "León", country: "ES", lng: -5.57, lat: 42.6 },
-    { name: "Burgos", country: "ES", lng: -3.7, lat: 42.34 },
+    { name: "Cáceres", country: "ES", lng: -6.37, lat: 39.48 },
+    { name: "Badajoz", country: "ES", lng: -6.97, lat: 38.88 },
+    { name: "Sevilla", country: "ES", lng: -5.99, lat: 37.39 },
+    { name: "Granada", country: "ES", lng: -3.6, lat: 37.18 },
+    { name: "Málaga", country: "ES", lng: -4.42, lat: 36.72 },
     { name: "Bragança", country: "PT", lng: -6.76, lat: 41.81 },
   ];
 

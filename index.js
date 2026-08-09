@@ -3,10 +3,10 @@
   "use strict";
 
   const FOCUS = {
-    center: [-5.8, 42.55],
-    zoom: 6.15,
-    // Norte: Galicia → Navarra (+ norte de CyL)
-    bbox: [-9.4, 41.0, -0.6, 43.9],
+    center: [-5.5, 40.0],
+    zoom: 5.55,
+    // Oeste/norte–sur: Galicia → Andalucía (+ CyL / Extremadura)
+    bbox: [-9.4, 35.95, -0.6, 43.9],
   };
 
   /** Provinces with open live official partes (JCyL). */
@@ -23,19 +23,49 @@
     "SORIA",
   ]);
 
-  /** Northern CCAA in the sidebar (Galicia has citizen reports; others EFFIS). */
-  const NORTH_REGIONS = [
-    { id: "galicia", name: "Galicia", kind: "galicia", bbox: [-9.35, 41.78, -6.7, 43.8] },
-    { id: "asturias", name: "Asturias", kind: "sat", bbox: [-7.25, 42.85, -4.45, 43.7] },
-    { id: "cantabria", name: "Cantabria", kind: "sat", bbox: [-4.85, 42.75, -3.15, 43.55] },
-    { id: "pais-vasco", name: "País Vasco", kind: "sat", bbox: [-3.45, 42.95, -1.7, 43.5] },
-    { id: "navarra", name: "Navarra", kind: "sat", bbox: [-2.5, 41.85, -0.7, 43.35] },
-    { id: "la-rioja", name: "La Rioja", kind: "sat", bbox: [-3.15, 41.9, -1.7, 42.65] },
+  /**
+   * Sidebar region sections. kind "galicia" uses incendios.gal; "sat" is EFFIS fly-to.
+   * Keep in sync with about.js coverage narrative.
+   */
+  const REGION_SECTIONS = [
+    {
+      title: "Norte de España",
+      regions: [
+        { id: "galicia", name: "Galicia", kind: "galicia", bbox: [-9.35, 41.78, -6.7, 43.8] },
+        { id: "asturias", name: "Asturias", kind: "sat", bbox: [-7.25, 42.85, -4.45, 43.7] },
+        { id: "cantabria", name: "Cantabria", kind: "sat", bbox: [-4.85, 42.75, -3.15, 43.55] },
+        { id: "pais-vasco", name: "País Vasco", kind: "sat", bbox: [-3.45, 42.95, -1.7, 43.5] },
+        { id: "navarra", name: "Navarra", kind: "sat", bbox: [-2.5, 41.85, -0.7, 43.35] },
+        { id: "la-rioja", name: "La Rioja", kind: "sat", bbox: [-3.15, 41.9, -1.7, 42.65] },
+      ],
+    },
+    {
+      title: "Extremadura",
+      regions: [
+        { id: "caceres", name: "Cáceres", kind: "sat", bbox: [-7.55, 39.05, -4.72, 40.48] },
+        { id: "badajoz", name: "Badajoz", kind: "sat", bbox: [-7.55, 37.85, -4.65, 39.45] },
+      ],
+    },
+    {
+      title: "Andalucía",
+      regions: [
+        { id: "huelva", name: "Huelva", kind: "sat", bbox: [-7.6, 36.95, -6.15, 38.2] },
+        { id: "sevilla", name: "Sevilla", kind: "sat", bbox: [-6.55, 36.65, -4.95, 38.2] },
+        { id: "cadiz", name: "Cádiz", kind: "sat", bbox: [-6.5, 35.95, -5.0, 36.95] },
+        { id: "malaga", name: "Málaga", kind: "sat", bbox: [-5.65, 36.25, -3.7, 37.3] },
+        { id: "cordoba", name: "Córdoba", kind: "sat", bbox: [-5.6, 37.15, -4.0, 38.55] },
+        { id: "jaen", name: "Jaén", kind: "sat", bbox: [-4.4, 37.35, -2.4, 38.55] },
+        { id: "granada", name: "Granada", kind: "sat", bbox: [-4.35, 36.7, -2.05, 38.1] },
+        { id: "almeria", name: "Almería", kind: "sat", bbox: [-3.15, 36.65, -1.55, 37.9] },
+      ],
+    },
   ];
 
   const ACTIVE_STATUSES = new Set(["ACTIVO", "CONTROLADO", "ESTABILIZADO"]);
   /** Only keep fires with a recent official parte (ongoing bulletin, not archive). */
   const PARTE_LOOKBACK_DAYS = 3;
+  /** Fetch older CyL partes so the detail chart can show medios over time. */
+  const HISTORY_LOOKBACK_DAYS = 14;
   const GALICIA_LOOKBACK_DAYS = 14;
   const GALICIA_FIRE_TIPOS = new Set([
     "lume-visible",
@@ -73,6 +103,7 @@
     layerGalicia: document.getElementById("layer-galicia"),
     layerHotspots: document.getElementById("layer-hotspots"),
     layerBurned: document.getElementById("layer-burned"),
+    layerRelief: document.getElementById("layer-relief"),
     layerSatellite: document.getElementById("layer-satellite"),
   };
 
@@ -285,10 +316,11 @@
       lng: typeof pos.lon === "number" ? pos.lon : null,
       locationLine: [municipality, province].filter(Boolean).join(", "),
       detailUrl: null,
+      history: [],
     };
   }
 
-  function isActiveRow(row) {
+  function isCandidateRow(row) {
     const mun = (row.termino_municipal || "").trim().toUpperCase();
     if (!mun || mun.startsWith("SIN INCID")) return false;
     const status = (row.situacion_actual || "").trim().toUpperCase();
@@ -296,10 +328,12 @@
     if (isExtinguished(row)) return false;
     if (!OFFICIAL_PROVINCES.has(provinceOf(row.provincia))) return false;
     if (!row.posicion || typeof row.posicion.lat !== "number") return false;
-    const parteMs = parseParteMs(row.fecha_del_parte, row.hora_del_parte);
-    const cutoff = Date.now() - PARTE_LOOKBACK_DAYS * 24 * 36e5;
-    if (parteMs && parteMs < cutoff) return false;
     return true;
+  }
+
+  function isCurrentFire(fire) {
+    const cutoff = Date.now() - PARTE_LOOKBACK_DAYS * 24 * 36e5;
+    return !!(fire.parteMs && fire.parteMs >= cutoff);
   }
 
   async function fetchJcylPage(where, offset) {
@@ -314,8 +348,17 @@
     return res.json();
   }
 
+  function mergeHistory(points) {
+    const byT = new Map();
+    for (const p of points) {
+      if (!p || !p.t) continue;
+      byT.set(p.t, p);
+    }
+    return Array.from(byT.values()).sort((a, b) => a.t - b.t);
+  }
+
   async function fetchJcylFires() {
-    const since = isoDate(daysAgo(PARTE_LOOKBACK_DAYS));
+    const since = isoDate(daysAgo(HISTORY_LOOKBACK_DAYS));
     const where =
       `fecha_del_parte >= date'${since}'` +
       ` and situacion_actual in ('ACTIVO','CONTROLADO','ESTABILIZADO')` +
@@ -324,7 +367,7 @@
     const rows = [];
     let offset = 0;
     let total = Infinity;
-    while (offset < total && offset < 500) {
+    while (offset < total && offset < 800) {
       const data = await fetchJcylPage(where, offset);
       const batch = Array.isArray(data.results) ? data.results : [];
       total = typeof data.total_count === "number" ? data.total_count : batch.length;
@@ -333,15 +376,33 @@
       offset += batch.length;
     }
 
-    const best = new Map();
+    const byId = new Map();
     for (const row of rows) {
-      if (!isActiveRow(row)) continue;
+      if (!isCandidateRow(row)) continue;
       const n = normalizeFire(row);
-      const prev = best.get(n.id);
-      if (!prev || parteStamp(n) >= parteStamp(prev)) best.set(n.id, n);
+      const snap = {
+        t: n.parteMs,
+        label: n.parteAt,
+        man: n.man,
+        terrain: n.terrain,
+        aerial: n.aerial,
+        status: n.status,
+      };
+      let g = byId.get(n.id);
+      if (!g) {
+        g = { fire: n, history: [] };
+        byId.set(n.id, g);
+      }
+      g.history.push(snap);
+      if ((n.parteMs || 0) >= (g.fire.parteMs || 0)) g.fire = n;
     }
 
-    const list = Array.from(best.values());
+    const list = [];
+    for (const g of byId.values()) {
+      if (!isCurrentFire(g.fire)) continue;
+      g.fire.history = mergeHistory(g.history);
+      list.push(g.fire);
+    }
     list.sort(compareFires);
     return list;
   }
@@ -439,6 +500,14 @@
             attribution:
               '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
           },
+          terrain: {
+            type: "raster-dem",
+            tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+            encoding: "terrarium",
+            tileSize: 256,
+            maxzoom: 15,
+            attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain</a>',
+          },
           "effis-hotspots": {
             type: "raster",
             tiles: [effisTileUrl("viirs.hs", true)],
@@ -456,6 +525,19 @@
         },
         layers: [
           { id: "basemap", type: "raster", source: "basemap" },
+          {
+            id: "relief",
+            type: "hillshade",
+            source: "terrain",
+            layout: { visibility: "visible" },
+            paint: {
+              "hillshade-exaggeration": 0.5,
+              "hillshade-shadow-color": "#3a3228",
+              "hillshade-highlight-color": "#ffffff",
+              "hillshade-accent-color": "#6a5a48",
+              "hillshade-illumination-direction": 315,
+            },
+          },
           {
             id: "effis-burned",
             type: "raster",
@@ -511,6 +593,7 @@
     if (!map || !map.isStyleLoaded()) return;
     setLayerVisibility("effis-hotspots", els.layerHotspots.checked);
     setLayerVisibility("effis-burned", els.layerBurned.checked);
+    setLayerVisibility("relief", !!(els.layerRelief && els.layerRelief.checked));
     setBasemap(els.layerSatellite.checked);
   }
 
@@ -706,6 +789,99 @@
     els.list.appendChild(li);
   }
 
+  function buildResourcesChart(history) {
+    const wrap = document.createElement("div");
+    wrap.className = "chart-block";
+
+    const title = document.createElement("h6");
+    title.className = "field-label";
+    title.textContent = "Medios en el tiempo";
+    wrap.appendChild(title);
+
+    if (!history || history.length < 2) {
+      const empty = document.createElement("p");
+      empty.className = "chart-empty";
+      empty.textContent =
+        history && history.length === 1
+          ? "Solo un parte reciente: aún no hay curva de medios."
+          : "Sin histórico de medios para este incendio.";
+      wrap.appendChild(empty);
+      return wrap;
+    }
+
+    const W = 340;
+    const H = 168;
+    const pad = { t: 14, r: 10, b: 30, l: 30 };
+    const iw = W - pad.l - pad.r;
+    const ih = H - pad.t - pad.b;
+    const t0 = history[0].t;
+    const t1 = history[history.length - 1].t || t0 + 1;
+    const span = Math.max(t1 - t0, 1);
+    let yMax = 1;
+    for (const p of history) {
+      yMax = Math.max(yMax, p.man || 0, p.terrain || 0, p.aerial || 0);
+    }
+    yMax = Math.ceil(yMax * 1.15) || 1;
+
+    const xOf = (t) => pad.l + ((t - t0) / span) * iw;
+    const yOf = (v) => pad.t + ih - (v / yMax) * ih;
+
+    const series = [
+      { key: "man", label: "Operativos", color: "#ff6e02" },
+      { key: "terrain", label: "Terrestres", color: "#5d6d7e" },
+      { key: "aerial", label: "Aéreos", color: "#1f7aaf" },
+    ];
+
+    const fmtTick = (ms) => {
+      const d = new Date(ms);
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      return `${dd}/${mm} ${hh}h`;
+    };
+
+    let paths = "";
+    for (const s of series) {
+      const d = history
+        .map((p, i) => `${i === 0 ? "M" : "L"}${xOf(p.t).toFixed(1)},${yOf(p[s.key] || 0).toFixed(1)}`)
+        .join(" ");
+      paths += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" />`;
+      for (const p of history) {
+        paths += `<circle cx="${xOf(p.t).toFixed(1)}" cy="${yOf(p[s.key] || 0).toFixed(1)}" r="2.4" fill="${s.color}" />`;
+      }
+    }
+
+    const midT = t0 + span / 2;
+    const svg = `
+      <svg class="resources-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución de medios por parte">
+        <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${pad.t + ih}" stroke="rgba(0,0,0,.12)" />
+        <line x1="${pad.l}" y1="${pad.t + ih}" x2="${pad.l + iw}" y2="${pad.t + ih}" stroke="rgba(0,0,0,.12)" />
+        <text x="${pad.l - 6}" y="${pad.t + 4}" text-anchor="end" class="chart-tick">${yMax}</text>
+        <text x="${pad.l - 6}" y="${pad.t + ih}" text-anchor="end" class="chart-tick">0</text>
+        <text x="${pad.l}" y="${H - 8}" text-anchor="start" class="chart-tick">${escapeHtml(fmtTick(t0))}</text>
+        <text x="${pad.l + iw / 2}" y="${H - 8}" text-anchor="middle" class="chart-tick">${escapeHtml(fmtTick(midT))}</text>
+        <text x="${pad.l + iw}" y="${H - 8}" text-anchor="end" class="chart-tick">${escapeHtml(fmtTick(t1))}</text>
+        ${paths}
+      </svg>
+    `;
+    const chart = document.createElement("div");
+    chart.innerHTML = svg;
+    wrap.appendChild(chart.firstElementChild);
+
+    const legend = document.createElement("div");
+    legend.className = "chart-legend";
+    legend.innerHTML = series
+      .map((s) => `<span><i style="background:${s.color}"></i>${escapeHtml(s.label)}</span>`)
+      .join("");
+    wrap.appendChild(legend);
+
+    const note = document.createElement("p");
+    note.className = "chart-note";
+    note.textContent = `${history.length} partes JCyL · operativos / terrestres / aéreos`;
+    wrap.appendChild(note);
+    return wrap;
+  }
+
   function renderFireDetail(fire) {
     els.sidebar.classList.add("is-detail");
     els.sidebar.setAttribute("aria-label", "Detalle del incendio");
@@ -764,6 +940,10 @@
         ${fire.source === "incendios.gal" ? "" : assetBlock(fire)}
       </div>
     `;
+    if (fire.source === "JCyL") {
+      const body = card.querySelector(".card-body");
+      if (body) body.appendChild(buildResourcesChart(fire.history || []));
+    }
     appendListItem(card);
   }
 
@@ -790,6 +970,48 @@
     });
   }
 
+  function renderSatRegionCard(region, i, gaFires) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "region-card";
+    btn.style.animationDelay = `${Math.min(i, 12) * 0.03}s`;
+
+    if (region.kind === "galicia") {
+      const n = gaFires.length;
+      if (!n) btn.classList.add("is-empty");
+      btn.innerHTML = `
+        <div class="region-head">
+          <h3 class="region-name">${escapeHtml(region.name)}</h3>
+          <span class="region-count"><strong>${n}</strong> aviso${n === 1 ? "" : "s"}</span>
+        </div>
+        <p class="region-meta">${
+          n
+            ? "Avisos cidadáns recientes (incendios.gal) — no oficiales"
+            : "Sin avisos recientes · capas satélite EFFIS"
+        }</p>
+      `;
+      btn.addEventListener("click", () => {
+        if (gaFires.length) flyToFires(gaFires);
+        else flyToBbox(region.bbox);
+        showSidebar(true);
+      });
+    } else {
+      btn.classList.add("is-empty");
+      btn.innerHTML = `
+        <div class="region-head">
+          <h3 class="region-name">${escapeHtml(region.name)}</h3>
+          <span class="region-count">satélite</span>
+        </div>
+        <p class="region-meta">Sin parte abierto en vivo — hotspots EFFIS en el mapa</p>
+      `;
+      btn.addEventListener("click", () => {
+        flyToBbox(region.bbox);
+        showSidebar(true);
+      });
+    }
+    appendListItem(btn);
+  }
+
   function renderRegionOverview(list) {
     els.sidebar.classList.remove("is-detail");
     els.sidebar.setAttribute("aria-label", "Resumen por región");
@@ -797,51 +1019,12 @@
     const cylFires = list.filter((f) => f.source === "JCyL");
     const gaFires = list.filter((f) => f.source === "incendios.gal");
 
-    const northTitle = document.createElement("p");
-    northTitle.className = "panel-title";
-    northTitle.textContent = "Norte de España";
-    appendListItem(northTitle);
-
-    NORTH_REGIONS.forEach((region, i) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "region-card";
-      btn.style.animationDelay = `${Math.min(i, 10) * 0.03}s`;
-
-      if (region.kind === "galicia") {
-        const n = gaFires.length;
-        if (!n) btn.classList.add("is-empty");
-        btn.innerHTML = `
-          <div class="region-head">
-            <h3 class="region-name">${escapeHtml(region.name)}</h3>
-            <span class="region-count"><strong>${n}</strong> aviso${n === 1 ? "" : "s"}</span>
-          </div>
-          <p class="region-meta">${
-            n
-              ? "Avisos cidadáns recientes (incendios.gal) — no oficiales"
-              : "Sin avisos recientes · capas satélite EFFIS"
-          }</p>
-        `;
-        btn.addEventListener("click", () => {
-          if (gaFires.length) flyToFires(gaFires);
-          else flyToBbox(region.bbox);
-          showSidebar(true);
-        });
-      } else {
-        btn.classList.add("is-empty");
-        btn.innerHTML = `
-          <div class="region-head">
-            <h3 class="region-name">${escapeHtml(region.name)}</h3>
-            <span class="region-count">satélite</span>
-          </div>
-          <p class="region-meta">Sin parte abierto en vivo — hotspots EFFIS en el mapa</p>
-        `;
-        btn.addEventListener("click", () => {
-          flyToBbox(region.bbox);
-          showSidebar(true);
-        });
-      }
-      appendListItem(btn);
+    REGION_SECTIONS.forEach((section) => {
+      const title = document.createElement("p");
+      title.className = "panel-title";
+      title.textContent = section.title;
+      appendListItem(title);
+      section.regions.forEach((region, i) => renderSatRegionCard(region, i, gaFires));
     });
 
     const cylTitle = document.createElement("p");
@@ -888,7 +1071,7 @@
     const sat = document.createElement("p");
     sat.className = "overview-note";
     sat.innerHTML =
-      "Resto de España: EFFIS en el mapa. Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a> (cidadán).";
+      "Extremadura y Andalucía: sin parte diario abierto comparable — EFFIS en el mapa. Galicia: <a href=\"https://incendios.gal/\" rel=\"noopener\" target=\"_blank\">incendios.gal</a> (cidadán).";
     appendListItem(sat);
 
     const pt = document.createElement("p");
@@ -1054,6 +1237,13 @@
       els.layerBurned.closest(".layer-item")?.classList.toggle("is-on", on);
       setLayerVisibility("effis-burned", on);
     });
+    if (els.layerRelief) {
+      els.layerRelief.addEventListener("change", () => {
+        const on = els.layerRelief.checked;
+        els.layerRelief.closest(".layer-item")?.classList.toggle("is-on", on);
+        setLayerVisibility("relief", on);
+      });
+    }
     els.layerOficiales.addEventListener("change", () => {
       const on = els.layerOficiales.checked;
       els.layerOficiales.closest(".layer-item")?.classList.toggle("is-on", on);
@@ -1077,7 +1267,7 @@
     });
 
     // Initial chip styles
-    [els.layerOficiales, els.layerGalicia, els.layerHotspots, els.layerBurned, els.layerSatellite].forEach(
+    [els.layerOficiales, els.layerGalicia, els.layerHotspots, els.layerBurned, els.layerRelief, els.layerSatellite].forEach(
       (input) => {
         if (!input) return;
         input.closest(".layer-item")?.classList.toggle("is-on", input.checked);
