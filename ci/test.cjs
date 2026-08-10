@@ -255,7 +255,9 @@ async function main() {
     assert.ok(lib.includes("filterFogosRows"));
     assert.ok(js.includes("reduceJcylRows(rows)"));
     assert.ok(js.includes("filterGaliciaRows(rows)"));
-    assert.ok(js.includes("[-9.5, 35.95, 4.45, 43.85]"), "default Spain bbox");
+    assert.ok(js.includes("[-9.5, 35.95, 4.45, 44.5]"), "default Spain bbox with France pad");
+    assert.ok(js.includes("MAP_MAX_BOUNDS"), "shared pan limit for MapLibre + Leaflet");
+    assert.ok(js.includes("north: 48.5"), "pan limit reaches southern/central France");
     assert.ok(!js.includes("REGION_SECTIONS"), "no per-CCAA sat card list");
     assert.ok(!js.includes("ver mapa"), "no empty ver-mapa sat cards");
     assert.ok(!js.includes("is-empty"), "sat cards must stay clickable (not is-empty)");
@@ -407,13 +409,14 @@ async function main() {
   });
 
   test("focus bbox covers Spain sample points", () => {
-    const bbox = [-9.5, 35.95, 4.45, 43.85];
+    const bbox = [-9.5, 35.95, 4.45, 44.5];
     assert.ok(inFocusBbox(42.88, -8.54, bbox)); // Santiago
     assert.ok(inFocusBbox(40.42, -3.7, bbox)); // Madrid
     assert.ok(inFocusBbox(41.39, 2.17, bbox)); // Barcelona
     assert.ok(inFocusBbox(39.57, 2.65, bbox)); // Palma
     assert.ok(inFocusBbox(37.39, -5.99, bbox)); // Sevilla
     assert.ok(inFocusBbox(39.48, -6.37, bbox)); // Cáceres
+    assert.ok(inFocusBbox(43.6, -1.4, bbox)); // near Biarritz / south France pad
     assert.ok(!inFocusBbox(28.1, -15.4, bbox)); // Canarias — fuera de la vista por defecto
   });
 

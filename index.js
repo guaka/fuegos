@@ -19,8 +19,21 @@
   const FOCUS = {
     center: [-3.5, 40.0],
     zoom: 5.4,
-    // Península + Baleares (Canarias alcanzable al navegar)
-    bbox: [-9.5, 35.95, 4.45, 43.85],
+    // Península + Baleares (Canarias alcanzable al navegar).
+    // North pad past the Pyrenees so the map can pan into southern France.
+    bbox: [-9.5, 35.95, 4.45, 44.5],
+  };
+
+  /**
+   * Hard pan limit for MapLibre / Leaflet.
+   * Needs headroom north of Spain — a tight 44.6°N made “southern France”
+   * unreachable when the sheet ate the lower half of the viewport.
+   */
+  const MAP_MAX_BOUNDS = {
+    west: -19.5,
+    south: 26.5,
+    east: 6.5,
+    north: 48.5,
   };
 
   const {
@@ -605,8 +618,8 @@
       touchPitch: false,
       pitchWithRotate: false,
       maxBounds: [
-        [-19.5, 26.8],
-        [5.8, 44.6],
+        [MAP_MAX_BOUNDS.west, MAP_MAX_BOUNDS.south],
+        [MAP_MAX_BOUNDS.east, MAP_MAX_BOUNDS.north],
       ],
       attributionControl: true,
     });
@@ -614,7 +627,7 @@
     map.dragRotate.disable();
     map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
-    map.on("click", () => selectFire(null, false));
+    map.on("click", onMapBackgroundClick);
   }
 
   function initLeafletMap() {
@@ -628,10 +641,10 @@
       zoomControl: false,
       preferCanvas: true,
       maxBounds: [
-        [26.8, -19.5],
-        [44.6, 5.8],
+        [MAP_MAX_BOUNDS.south, MAP_MAX_BOUNDS.west],
+        [MAP_MAX_BOUNDS.north, MAP_MAX_BOUNDS.east],
       ],
-      maxBoundsViscosity: 0.85,
+      maxBoundsViscosity: 0.75,
       attributionControl: true,
     });
 
@@ -671,7 +684,7 @@
     firmsLeafletLayer = L.layerGroup();
     if (els.layerFirms && els.layerFirms.checked) firmsLeafletLayer.addTo(map);
 
-    map.on("click", () => selectFire(null, false));
+    map.on("click", onMapBackgroundClick);
 
     // Hillshade needs WebGL — hide control in compatible mode.
     if (els.layerRelief) {
@@ -2227,15 +2240,31 @@
     });
   }
 
+  function syncSheetLabel() {
+    if (!els.sheetLabel) return;
+    const open = els.sidebar && els.sidebar.classList.contains("is-sheet-open");
+    els.sheetLabel.textContent = I18n.t(open ? "sheet.close" : "sheet.list");
+    // Keep data-i18n off while open so applyDom doesn't overwrite "Close list".
+    if (open) els.sheetLabel.removeAttribute("data-i18n");
+    else els.sheetLabel.setAttribute("data-i18n", "sheet.list");
+  }
+
   function setSheetOpen(open) {
     if (!els.sidebar) return;
     els.sidebar.classList.toggle("is-sheet-open", !!open);
     document.documentElement.classList.toggle("sheet-open", !!open);
     if (els.btnSheet) els.btnSheet.setAttribute("aria-expanded", open ? "true" : "false");
+    syncSheetLabel();
     notifyMapResize();
     if (selectedId) {
       keepSelectedFireInView({ delay: isMobileLayout() ? 300 : 0, durationMs: 380 });
     }
+  }
+
+  /** Map background tap: clear selection and collapse the mobile sheet. */
+  function onMapBackgroundClick() {
+    selectFire(null, false);
+    if (isMobileLayout()) setSheetOpen(false);
   }
 
   function showSidebar(show) {
@@ -2376,6 +2405,28 @@
       els.btnSheet.addEventListener("click", () => {
         setSheetOpen(!els.sidebar.classList.contains("is-sheet-open"));
       });
+      // Swipe down on the handle to collapse; swipe up to expand.
+      let sheetTouchY = null;
+      els.btnSheet.addEventListener(
+        "touchstart",
+        (e) => {
+          if (!e.touches || !e.touches[0]) return;
+          sheetTouchY = e.touches[0].clientY;
+        },
+        { passive: true }
+      );
+      els.btnSheet.addEventListener(
+        "touchend",
+        (e) => {
+          if (sheetTouchY == null || !e.changedTouches || !e.changedTouches[0]) return;
+          const dy = e.changedTouches[0].clientY - sheetTouchY;
+          sheetTouchY = null;
+          const open = els.sidebar.classList.contains("is-sheet-open");
+          if (dy > 48 && open) setSheetOpen(false);
+          else if (dy < -48 && !open) setSheetOpen(true);
+        },
+        { passive: true }
+      );
     }
 
     function syncLayersToggle() {
@@ -2582,6 +2633,7 @@
       }
       updateTicker();
       renderSidebar();
+      syncSheetLabel();
     });
     wireUi();
     const startData = () => {
