@@ -21,6 +21,7 @@ La interfaz sigue el patrón de fogos.pt: barra naranja, tarjetas, mapa y capas.
 - [`index.html`](./index.html) — mapa en vivo + Sobre (`#about`)
 - [`DATA.md`](./DATA.md) — fuentes de datos (tablas)
 - [`data/REGIONAL.md`](./data/REGIONAL.md) — candidatos futuros y fuentes a evitar
+
 ```bash
 python3 -m http.server 8080
 ```
@@ -50,6 +51,12 @@ Shared filter logic lives in [`lib/fires.js`](./lib/fires.js) (used by the map a
 Behaviour specs for agents live under [`openspec/`](./openspec/) (`openspec validate --specs`).
 
 GitHub Actions runs unit tests and Playwright on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+
+## Mantener / contactar
+
+Esto empezó como un proyecto hobby. Si alguien quiere **adoptarlo, mantenerlo o promocionarlo en serio**, es muy bienvenido: fork, PRs, o hablarlo directamente.
+
+**Contacto:** [quefuegos@guaka.org](mailto:quefuegos@guaka.org)
 
 ## Licencia
 
