@@ -208,7 +208,7 @@ async function main() {
       "SPOTS_CACHE_KEY",
       "ensureFirmsLayers",
       "GALICIA_BBOX",
-      "España · satélite",
+      "region.satName",
       "is-firms",
       "isMobileLayout",
       "setSheetOpen",
@@ -226,7 +226,7 @@ async function main() {
       "seriousnessScore",
       "sourceBadgeMeta",
       "source-badge",
-      "Satélite · FIRMS",
+      "firms.badge",
       "__FUEGOS_FORCE_LEAFLET",
       "scheduleLeafletResize",
       "preferCanvas",
@@ -240,9 +240,12 @@ async function main() {
     assert.ok(html.includes("./lib/fires.js"));
     assert.ok(html.includes("./lib/i18n.js"));
     assert.ok(html.includes("layer-firms"));
-    assert.ok(html.includes("layer-portugal"));
+    assert.ok(html.includes("layer.portugal") || html.includes("layer-portugal"));
     assert.ok(js.includes("leaflet@1.9.4"), "Leaflet CDN for Lockdown/no-WebGL fallback");
     assert.ok(js.includes("Modo de aislamiento") || html.includes("Modo de aislamiento"));
+    const i18n = read("lib/i18n.js");
+    assert.ok(i18n.includes("España · satélite") || i18n.includes("region.satName"));
+    assert.ok(i18n.includes("Satélite · FIRMS"));
     assert.ok(lib.includes("OFFICIAL_PROVINCES"));
     assert.ok(lib.includes("LEÓN"));
     assert.ok(lib.includes("fecha_extinguido is null"));

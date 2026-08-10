@@ -37,6 +37,7 @@
     isoDate,
     daysAgo,
     compareFires,
+    parseFogosDateMs,
   } = FF;
 
   /**
@@ -519,11 +520,11 @@
     const hhmm = time.length >= 4 ? `${time.slice(0, 2)}:${time.slice(2, 4)}` : time;
     return `
       <div class="firms-popup">
-        <span class="source-badge sat">Satélite · FIRMS</span>
-        <strong>Detección de calor VIIRS</strong><br/>
+        <span class="source-badge sat">${escapeHtml(I18n.t("firms.badge"))}</span>
+        <strong>${escapeHtml(I18n.t("firms.title"))}</strong><br/>
         ${escapeHtml(p.acq_date || "—")} ${escapeHtml(hhmm)} UTC<br/>
-        Confianza: ${escapeHtml(p.confidence || "—")} · FRP ${escapeHtml(String(p.frp ?? "—"))}<br/>
-        <em class="source-caveat">No es un parte oficial de extinción. Contrasta con 112 / Protección Civil.</em>
+        ${escapeHtml(I18n.t("firms.conf"))}: ${escapeHtml(p.confidence || "—")} · FRP ${escapeHtml(String(p.frp ?? "—"))}<br/>
+        <em class="source-caveat">${escapeHtml(I18n.t("firms.caveat"))}</em>
       </div>
     `;
   }
@@ -679,7 +680,7 @@
       els.layerRelief.checked = false;
     }
 
-    setHeaderStatus("Mapa · sin WebGL");
+    setHeaderStatus(I18n.t("map.noWebgl"));
     scheduleLeafletResize();
     window.addEventListener("resize", scheduleLeafletResize, { passive: true });
     window.addEventListener("orientationchange", scheduleLeafletResize, { passive: true });
@@ -1200,29 +1201,99 @@
     els.list.appendChild(li);
   }
 
-  function buildResourcesChart(history) {
+  function parseStartedMs(fire) {
+    const raw = String(fire.started || "").trim();
+    if (!raw) return 0;
+    let t = Date.parse(raw.replace(" ", "T"));
+    if (Number.isFinite(t)) return t;
+    const parts = raw.split(/\s+/);
+    t = parseFogosDateMs(parts[0], parts[1] || "");
+    return t || 0;
+  }
+
+  /**
+   * Build chart points for a fire.
+   * JCyL: multi-parte history from ODS. Others: start→current when we have medios.
+   */
+  function chartHistoryFor(fire) {
+    const byT = new Map();
+    for (const p of fire.history || []) {
+      if (!p || !p.t) continue;
+      byT.set(p.t, p);
+    }
+    let points = Array.from(byT.values()).sort((a, b) => a.t - b.t);
+    const resources = (fire.man || 0) + (fire.terrain || 0) + (fire.aerial || 0);
+    const endT = fire.parteMs || 0;
+    const startT = parseStartedMs(fire);
+    const endSnap = {
+      t: endT || Date.now(),
+      label: fire.parteAt || fire.started || "",
+      man: fire.man || 0,
+      terrain: fire.terrain || 0,
+      aerial: fire.aerial || 0,
+      status: fire.status || "",
+    };
+
+    if (points.length >= 2) return { points, mode: "partes" };
+
+    if (points.length === 1) {
+      const only = points[0];
+      if (startT && startT < only.t - 45 * 60e3) {
+        return {
+          points: [
+            { t: startT, label: fire.started || "", man: 0, terrain: 0, aerial: 0, status: "" },
+            only,
+          ],
+          mode: "inicio+parte",
+        };
+      }
+      return { points, mode: "parte" };
+    }
+
+    if (resources > 0 && startT && endT && endT - startT > 45 * 60e3) {
+      return {
+        points: [
+          { t: startT, label: fire.started || "", man: 0, terrain: 0, aerial: 0, status: "" },
+          endSnap,
+        ],
+        mode: "inicio+actual",
+      };
+    }
+
+    if (resources > 0 && endSnap.t) {
+      return { points: [endSnap], mode: "actual" };
+    }
+    return { points: [], mode: "none" };
+  }
+
+  function shouldShowResourcesChart(fire) {
+    if (fire.source === SOURCE.GALICIA || fire.source === SOURCE.ARAGON) return false;
+    if (fire.source === SOURCE.JCYL) return true;
+    const { points } = chartHistoryFor(fire);
+    return points.length > 0;
+  }
+
+  function buildResourcesChart(fire) {
     const wrap = document.createElement("div");
     wrap.className = "chart-block";
 
     const title = document.createElement("h6");
     title.className = "field-label";
-    title.textContent = "Medios en el tiempo";
+    title.textContent = I18n.t("chart.title");
     wrap.appendChild(title);
 
-    if (!history || history.length < 2) {
+    const { points: history, mode } = chartHistoryFor(fire);
+    if (!history.length) {
       const empty = document.createElement("p");
       empty.className = "chart-empty";
-      empty.textContent =
-        history && history.length === 1
-          ? "Solo un parte reciente: aún no hay curva de medios."
-          : "Sin histórico de medios para este incendio.";
+      empty.textContent = I18n.t("chart.empty");
       wrap.appendChild(empty);
       return wrap;
     }
 
     const W = 340;
     const H = 168;
-    const pad = { t: 14, r: 10, b: 30, l: 30 };
+    const pad = { t: 14, r: 12, b: 30, l: 30 };
     const iw = W - pad.l - pad.r;
     const ih = H - pad.t - pad.b;
     const t0 = history[0].t;
@@ -1238,9 +1309,9 @@
     const yOf = (v) => pad.t + ih - (v / yMax) * ih;
 
     const series = [
-      { key: "man", label: "Operativos", color: "#ff6e02" },
-      { key: "terrain", label: "Terrestres", color: "#5d6d7e" },
-      { key: "aerial", label: "Aéreos", color: "#1f7aaf" },
+      { key: "man", label: I18n.t("detail.man"), color: "#ff6e02" },
+      { key: "terrain", label: I18n.t("detail.terrain"), color: "#5d6d7e" },
+      { key: "aerial", label: I18n.t("detail.aerial"), color: "#1f7aaf" },
     ];
 
     const fmtTick = (ms) => {
@@ -1248,36 +1319,110 @@
       const dd = String(d.getDate()).padStart(2, "0");
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const hh = String(d.getHours()).padStart(2, "0");
-      return `${dd}/${mm} ${hh}h`;
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      return `${dd}/${mm} ${hh}:${mi}`;
     };
 
     let paths = "";
     for (const s of series) {
-      const d = history
-        .map((p, i) => `${i === 0 ? "M" : "L"}${xOf(p.t).toFixed(1)},${yOf(p[s.key] || 0).toFixed(1)}`)
-        .join(" ");
-      paths += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" />`;
+      if (history.length >= 2) {
+        const d = history
+          .map((p, i) => `${i === 0 ? "M" : "L"}${xOf(p.t).toFixed(1)},${yOf(p[s.key] || 0).toFixed(1)}`)
+          .join(" ");
+        paths += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" />`;
+      }
       for (const p of history) {
-        paths += `<circle cx="${xOf(p.t).toFixed(1)}" cy="${yOf(p[s.key] || 0).toFixed(1)}" r="2.4" fill="${s.color}" />`;
+        paths += `<circle class="chart-dot" cx="${xOf(p.t).toFixed(1)}" cy="${yOf(p[s.key] || 0).toFixed(1)}" r="2.6" fill="${s.color}" />`;
       }
     }
 
+    let hits = "";
+    history.forEach((p, idx) => {
+      const cx = xOf(p.t).toFixed(1);
+      hits += `<circle class="chart-hit" data-idx="${idx}" cx="${cx}" cy="${(pad.t + ih / 2).toFixed(1)}" r="11" />`;
+    });
+
     const midT = t0 + span / 2;
+    const endLabel = history.length === 1 ? "" :
+      `<text x="${pad.l + iw / 2}" y="${H - 8}" text-anchor="middle" class="chart-tick">${escapeHtml(fmtTick(midT))}</text>
+       <text x="${pad.l + iw}" y="${H - 8}" text-anchor="end" class="chart-tick">${escapeHtml(fmtTick(t1))}</text>`;
     const svg = `
-      <svg class="resources-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución de medios por parte">
+      <svg class="resources-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHtml(I18n.t("chart.aria"))}">
         <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${pad.t + ih}" stroke="rgba(0,0,0,.12)" />
         <line x1="${pad.l}" y1="${pad.t + ih}" x2="${pad.l + iw}" y2="${pad.t + ih}" stroke="rgba(0,0,0,.12)" />
         <text x="${pad.l - 6}" y="${pad.t + 4}" text-anchor="end" class="chart-tick">${yMax}</text>
         <text x="${pad.l - 6}" y="${pad.t + ih}" text-anchor="end" class="chart-tick">0</text>
         <text x="${pad.l}" y="${H - 8}" text-anchor="start" class="chart-tick">${escapeHtml(fmtTick(t0))}</text>
-        <text x="${pad.l + iw / 2}" y="${H - 8}" text-anchor="middle" class="chart-tick">${escapeHtml(fmtTick(midT))}</text>
-        <text x="${pad.l + iw}" y="${H - 8}" text-anchor="end" class="chart-tick">${escapeHtml(fmtTick(t1))}</text>
+        ${history.length === 1
+          ? `<text x="${pad.l + iw}" y="${H - 8}" text-anchor="end" class="chart-tick">${escapeHtml(fmtTick(t1))}</text>`
+          : endLabel}
         ${paths}
+        ${hits}
       </svg>
     `;
-    const chart = document.createElement("div");
-    chart.innerHTML = svg;
-    wrap.appendChild(chart.firstElementChild);
+    const chartWrap = document.createElement("div");
+    chartWrap.style.position = "relative";
+    chartWrap.innerHTML = svg;
+    const svgEl = chartWrap.firstElementChild;
+    wrap.appendChild(chartWrap);
+
+    const tip = document.createElement("div");
+    tip.className = "chart-tooltip";
+    tip.setAttribute("role", "tooltip");
+    wrap.appendChild(tip);
+
+    const showTip = (idx, clientX, clientY) => {
+      const p = history[idx];
+      if (!p) return;
+      const when = p.label || fmtTick(p.t);
+      tip.innerHTML = `
+        <strong>${escapeHtml(when)}</strong>
+        <div class="chart-tip-row"><em>${escapeHtml(I18n.t("detail.man"))}</em><span>${p.man || 0}</span></div>
+        <div class="chart-tip-row"><em>${escapeHtml(I18n.t("detail.terrain"))}</em><span>${p.terrain || 0}</span></div>
+        <div class="chart-tip-row"><em>${escapeHtml(I18n.t("detail.aerial"))}</em><span>${p.aerial || 0}</span></div>
+        ${p.status ? `<div class="chart-tip-row"><em>${escapeHtml(I18n.t("chart.status"))}</em><span>${escapeHtml(p.status)}</span></div>` : ""}
+      `;
+      tip.classList.add("is-on");
+      svgEl.querySelectorAll(".chart-hit").forEach((el) => {
+        el.classList.toggle("is-active", el.getAttribute("data-idx") === String(idx));
+      });
+      const wrapBox = wrap.getBoundingClientRect();
+      const tipW = tip.offsetWidth || 120;
+      let left = clientX - wrapBox.left + 12;
+      let top = clientY - wrapBox.top - 8;
+      if (left + tipW > wrapBox.width - 4) left = clientX - wrapBox.left - tipW - 12;
+      if (top < 4) top = 4;
+      tip.style.left = `${Math.max(4, left)}px`;
+      tip.style.top = `${top}px`;
+    };
+
+    const hideTip = () => {
+      tip.classList.remove("is-on");
+      svgEl.querySelectorAll(".chart-hit.is-active").forEach((el) => el.classList.remove("is-active"));
+    };
+
+    svgEl.querySelectorAll(".chart-hit").forEach((el) => {
+      el.addEventListener("pointerenter", (e) => {
+        showTip(Number(el.getAttribute("data-idx")), e.clientX, e.clientY);
+      });
+      el.addEventListener("pointermove", (e) => {
+        showTip(Number(el.getAttribute("data-idx")), e.clientX, e.clientY);
+      });
+      el.addEventListener("pointerleave", hideTip);
+      el.addEventListener("focus", () => {
+        const box = el.getBoundingClientRect();
+        showTip(Number(el.getAttribute("data-idx")), box.left + box.width / 2, box.top);
+      });
+      el.addEventListener("blur", hideTip);
+      el.setAttribute("tabindex", "0");
+      const p = history[Number(el.getAttribute("data-idx"))];
+      if (p) {
+        el.setAttribute(
+          "aria-label",
+          `${p.label || fmtTick(p.t)}: ${p.man || 0} ${I18n.t("detail.man")}, ${p.terrain || 0} ${I18n.t("detail.terrain")}, ${p.aerial || 0} ${I18n.t("detail.aerial")}`
+        );
+      }
+    });
 
     const legend = document.createElement("div");
     legend.className = "chart-legend";
@@ -1288,7 +1433,25 @@
 
     const note = document.createElement("p");
     note.className = "chart-note";
-    note.textContent = `${history.length} partes JCyL · operativos / terrestres / aéreos`;
+    const srcTag =
+      fire.source === SOURCE.JCYL
+        ? "JCyL"
+        : fire.source === SOURCE.FOGOS
+          ? "fogos.pt"
+          : fire.source === SOURCE.INFOCA
+            ? "INFOCA"
+            : fire.source === SOURCE.BOMBERS
+              ? "Bombers"
+              : fire.source === SOURCE.INFOCAM
+                ? "INFOCAM"
+                : String(fire.source || "");
+    if (mode === "partes") {
+      note.textContent = I18n.t("chart.note.partes", { n: history.length, src: srcTag });
+    } else if (mode === "inicio+parte" || mode === "inicio+actual") {
+      note.textContent = I18n.t("chart.note.synth", { src: srcTag });
+    } else {
+      note.textContent = I18n.t("chart.note.single", { src: srcTag });
+    }
     wrap.appendChild(note);
     return wrap;
   }
@@ -1363,10 +1526,10 @@
         <p class="detail-source">${escapeHtml(I18n.t("detail.source"))} · ${sourceLinkHtml(fire)}</p>
       </div>
     `;
-    if (fire.source === SOURCE.JCYL) {
+    if (shouldShowResourcesChart(fire)) {
       const body = card.querySelector(".card-body");
       const srcEl = body?.querySelector(".detail-source");
-      const chart = buildResourcesChart(fire.history || []);
+      const chart = buildResourcesChart(fire);
       if (body && srcEl) body.insertBefore(chart, srcEl);
       else if (body) body.appendChild(chart);
     }
@@ -1377,12 +1540,18 @@
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "region-card is-firms";
+    const satMeta = I18n.t(firmsCount === 1 ? "region.satMeta_one" : "region.satMeta_many", {
+      n: firmsCount,
+    });
     btn.innerHTML = `
       <div class="region-head">
-        <h3 class="region-name">España · satélite</h3>
-        <span class="source-badge sat">Satélite</span>
+        <h3 class="region-name">${escapeHtml(I18n.t("region.satName"))}</h3>
+        <span class="source-badge sat">${escapeHtml(I18n.t("badge.sat"))}</span>
       </div>
-      <p class="region-meta"><strong>${firmsCount}</strong> detección${firmsCount === 1 ? "" : "es"} VIIRS 24h (NASA FIRMS) — no son partes oficiales</p>
+      <p class="region-meta">${escapeHtml(satMeta).replace(
+        String(firmsCount),
+        `<strong>${firmsCount}</strong>`
+      )}</p>
     `;
     btn.addEventListener("click", () => {
       if (els.layerFirms && !els.layerFirms.checked) {
@@ -1402,16 +1571,17 @@
     btn.className = "region-card";
     const n = gaFires.length;
     if (!n) btn.classList.add("is-sat");
+    const meta = n
+      ? escapeHtml(
+          I18n.t(n === 1 ? "region.galiciaMeta_one" : "region.galiciaMeta_many", { n })
+        ).replace(String(n), `<strong>${n}</strong>`)
+      : escapeHtml(I18n.t("region.galiciaEmpty"));
     btn.innerHTML = `
       <div class="region-head">
         <h3 class="region-name">Galicia</h3>
-        <span class="source-badge aviso">Aviso</span>
+        <span class="source-badge aviso">${escapeHtml(I18n.t("badge.alert"))}</span>
       </div>
-      <p class="region-meta">${
-        n
-          ? `<strong>${n}</strong> aviso${n === 1 ? "" : "s"} cidadáns (incendios.gal) — no oficiales`
-          : "Pulsa para acercar · avisos cidadáns + satélite"
-      }</p>
+      <p class="region-meta">${meta}</p>
     `;
     btn.addEventListener("click", () => {
       if (gaFires.length) flyToFires(gaFires);
@@ -1424,14 +1594,14 @@
   function renderCylSection(cylFires) {
     const cylTitle = document.createElement("p");
     cylTitle.className = "panel-title";
-    cylTitle.textContent = "Castilla y León · oficiales";
+    cylTitle.textContent = I18n.t("panel.cyl");
     appendListItem(cylTitle);
 
     const regions = regionStats(cylFires);
     if (!regions.length) {
       const empty = document.createElement("div");
       empty.className = "empty";
-      empty.textContent = "No hay partes oficiales en curso en CyL.";
+      empty.textContent = I18n.t("region.cylEmpty");
       appendListItem(empty);
       return;
     }
@@ -1441,21 +1611,46 @@
       btn.className = "region-card";
       btn.style.animationDelay = `${Math.min(i, 10) * 0.03}s`;
       const bits = [];
-      if (region.activo) bits.push(`${region.activo} activo${region.activo === 1 ? "" : "s"}`);
-      if (region.controlado) bits.push(`${region.controlado} controlado${region.controlado === 1 ? "" : "s"}`);
-      if (region.estabilizado) bits.push(`${region.estabilizado} estabilizado${region.estabilizado === 1 ? "" : "s"}`);
+      if (region.activo) {
+        bits.push(
+          I18n.t(region.activo === 1 ? "region.active_one" : "region.active_many", {
+            n: region.activo,
+          })
+        );
+      }
+      if (region.controlado) {
+        bits.push(
+          I18n.t(region.controlado === 1 ? "region.controlled_one" : "region.controlled_many", {
+            n: region.controlado,
+          })
+        );
+      }
+      if (region.estabilizado) {
+        bits.push(
+          I18n.t(region.estabilizado === 1 ? "region.stabilized_one" : "region.stabilized_many", {
+            n: region.estabilizado,
+          })
+        );
+      }
+      const ongoing = I18n.t("region.ongoing", { n: region.total }).replace(
+        String(region.total),
+        `<strong>${region.total}</strong>`
+      );
+      const stats = I18n.t("region.stats", {
+        man: region.man,
+        terrain: region.terrain,
+        aerial: region.aerial,
+      });
       btn.innerHTML = `
         <div class="region-head">
           <h3 class="region-name">${escapeHtml(displayProvince(region.province))}</h3>
-          <span class="source-badge oficial">Oficial</span>
+          <span class="source-badge oficial">${escapeHtml(I18n.t("badge.official"))}</span>
         </div>
-        <p class="region-meta"><strong>${region.total}</strong> en curso${
+        <p class="region-meta">${ongoing}${
           bits.length ? ` · ${escapeHtml(bits.join(" · "))}` : ""
         }</p>
         <div class="region-stats">
-          <span><b>${region.man}</b> operativos</span>
-          <span><b>${region.terrain}</b> terrestres</span>
-          <span><b>${region.aerial}</b> aéreos</span>
+          <span>${escapeHtml(stats)}</span>
         </div>
       `;
       btn.addEventListener("click", () => {
@@ -1469,13 +1664,13 @@
   function renderPortugalSection(ptFires) {
     const title = document.createElement("p");
     title.className = "panel-title";
-    title.textContent = "Portugal · fogos.pt";
+    title.textContent = I18n.t("panel.portugal");
     appendListItem(title);
 
     if (!ptFires.length) {
       const empty = document.createElement("div");
       empty.className = "empty";
-      empty.textContent = "No hay incendios abiertos en fogos.pt ahora.";
+      empty.textContent = I18n.t("region.ptEmpty");
       appendListItem(empty);
       return;
     }
@@ -1484,14 +1679,19 @@
     summary.type = "button";
     summary.className = "region-card is-pt";
     const activos = ptFires.filter((f) => f.statusClass === "activo").length;
+    const activeBit = activos
+      ? ` · ${I18n.t(activos === 1 ? "region.active_one" : "region.active_many", { n: activos })}`
+      : "";
+    const ptMeta = I18n.t("region.ptMeta", { n: ptFires.length, active: activeBit }).replace(
+      String(ptFires.length),
+      `<strong>${ptFires.length}</strong>`
+    );
     summary.innerHTML = `
       <div class="region-head">
         <h3 class="region-name">Portugal</h3>
-        <span class="source-badge despacho">Despacho</span>
+        <span class="source-badge despacho">${escapeHtml(I18n.t("badge.dispatch"))}</span>
       </div>
-      <p class="region-meta"><strong>${ptFires.length}</strong> en curso${
-        activos ? ` · ${activos} activos` : ""
-      } · ANEPC vía fogos.pt</p>
+      <p class="region-meta">${ptMeta}</p>
     `;
     summary.addEventListener("click", () => {
       if (els.layerPortugal && !els.layerPortugal.checked) {
@@ -1512,19 +1712,27 @@
       btn.type = "button";
       btn.className = "region-card";
       btn.style.animationDelay = `${Math.min(i, 10) * 0.03}s`;
+      const bits = [
+        region.activo &&
+          I18n.t(region.activo === 1 ? "region.active_one" : "region.active_many", {
+            n: region.activo,
+          }),
+        region.controlado &&
+          I18n.t(region.controlado === 1 ? "region.controlled_one" : "region.controlled_many", {
+            n: region.controlado,
+          }),
+        region.estabilizado &&
+          I18n.t(region.estabilizado === 1 ? "region.stabilized_one" : "region.stabilized_many", {
+            n: region.estabilizado,
+          }),
+      ].filter(Boolean);
       btn.innerHTML = `
         <div class="region-head">
           <h3 class="region-name">${escapeHtml(region.province)}</h3>
           <span class="source-badge despacho">PT</span>
         </div>
         <p class="region-meta"><strong>${region.total}</strong> · ${escapeHtml(
-          [
-            region.activo && `${region.activo} activo${region.activo === 1 ? "" : "s"}`,
-            region.controlado && `${region.controlado} en resolución`,
-            region.estabilizado && `${region.estabilizado} vigilancia`,
-          ]
-            .filter(Boolean)
-            .join(" · ") || "En curso"
+          bits.join(" · ") || I18n.t("region.ongoing", { n: "" }).replace(/^\s*/, "") || "—"
         )}</p>
       `;
       btn.addEventListener("click", () => {
@@ -1556,7 +1764,7 @@
             <h3 class="region-name">${escapeHtml(label)}</h3>
             <span class="source-badge ${badgeKind}">${escapeHtml(badgeLabel)}</span>
           </div>
-          <p class="region-meta">Pulsa para acercar el mapa</p>
+          <p class="region-meta">${escapeHtml(I18n.t("region.tapZoom"))}</p>
         `;
         btn.addEventListener("click", () => {
           flyToBbox(bbox, label);
@@ -1571,14 +1779,22 @@
     summary.type = "button";
     summary.className = "region-card";
     const activos = regionFires.filter((f) => f.statusClass === "activo").length;
+    const meta =
+      activos > 0
+        ? I18n.t(activos === 1 ? "region.ongoingActive" : "region.ongoingActives", {
+            n: regionFires.length,
+            a: activos,
+          })
+        : I18n.t("region.ongoing", { n: regionFires.length });
     summary.innerHTML = `
       <div class="region-head">
         <h3 class="region-name">${escapeHtml(label)}</h3>
         <span class="source-badge ${badgeKind}">${escapeHtml(badgeLabel)}</span>
       </div>
-      <p class="region-meta"><strong>${regionFires.length}</strong> en curso${
-        activos ? ` · ${activos} activo${activos === 1 ? "" : "s"}` : ""
-      }</p>
+      <p class="region-meta">${meta.replace(
+        String(regionFires.length),
+        `<strong>${regionFires.length}</strong>`
+      )}</p>
     `;
     summary.addEventListener("click", () => {
       if (layerEl && !layerEl.checked) {
@@ -1608,7 +1824,7 @@
 
     const nation = document.createElement("p");
     nation.className = "panel-title";
-    nation.textContent = "Toda España";
+    nation.textContent = I18n.t("panel.allSpain");
     appendListItem(nation);
     renderSatNationCard();
 
@@ -1616,49 +1832,49 @@
 
     const gaTitle = document.createElement("p");
     gaTitle.className = "panel-title";
-    gaTitle.textContent = "Galicia · avisos cidadáns";
+    gaTitle.textContent = I18n.t("panel.galicia");
     appendListItem(gaTitle);
     renderGaliciaCard(gaFires);
 
     renderRegionalSection({
-      title: "Cataluña · Bombers",
+      title: I18n.t("panel.catalunya"),
       fires: catFires,
       badgeKind: "despacho",
       badgeLabel: "Bombers",
-      emptyText: "No hay incendios de vegetación abiertos en Bombers ahora.",
+      emptyText: I18n.t("region.bombersEmpty"),
       layerEl: els.layerCatalunya,
       bbox: CATALUNYA_BBOX,
       label: "Cataluña",
     });
 
     renderRegionalSection({
-      title: "Andalucía · INFOCA",
+      title: I18n.t("panel.andalucia"),
       fires: andFires,
       badgeKind: "oficial",
       badgeLabel: "INFOCA",
-      emptyText: "No hay incidentes INFOCA abiertos ahora.",
+      emptyText: I18n.t("region.infocaEmpty"),
       layerEl: els.layerAndalucia,
       bbox: ANDALUCIA_BBOX,
       label: "Andalucía",
     });
 
     renderRegionalSection({
-      title: "Castilla-La Mancha · INFOCAM",
+      title: I18n.t("panel.clm"),
       fires: clmFires,
       badgeKind: "oficial",
       badgeLabel: "INFOCAM",
-      emptyText: "No hay partes INFOCAM abiertos ahora.",
+      emptyText: I18n.t("region.infocamEmpty"),
       layerEl: els.layerClm,
       bbox: CLM_BBOX,
       label: "C-LM",
     });
 
     renderRegionalSection({
-      title: "Aragón · CartoFor",
+      title: I18n.t("panel.aragon"),
       fires: araFires,
       badgeKind: "oficial",
       badgeLabel: "Aragón",
-      emptyText: "No hay incendios activos en el WFS de Aragón ahora.",
+      emptyText: I18n.t("region.aragonEmpty"),
       layerEl: els.layerAragon,
       bbox: ARAGON_BBOX,
       label: "Aragón",
@@ -1668,8 +1884,7 @@
 
     const sat = document.createElement("p");
     sat.className = "overview-note";
-    sat.innerHTML =
-      "Cobertura regional: JCyL, Galicia, Bombers (CAT), INFOCA (AND), INFOCAM (C-LM), Aragón, fogos.pt. Resto: <strong>FIRMS</strong> satélite. Candidatos: 112CV, EUMETSAT FRP.";
+    sat.innerHTML = I18n.t("overview.note");
     appendListItem(sat);
   }
 

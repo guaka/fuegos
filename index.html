@@ -553,12 +553,61 @@
       margin-top: 0.95rem;
       padding-top: 0.85rem;
       border-top: 1px solid var(--line);
+      position: relative;
     }
     .resources-chart {
       display: block;
       width: 100%;
       height: auto;
       margin-top: 0.35rem;
+    }
+    .chart-hit {
+      fill: transparent;
+      stroke: none;
+      cursor: crosshair;
+    }
+    .chart-hit.is-active {
+      fill: rgba(255, 110, 2, 0.14);
+      stroke: rgba(255, 110, 2, 0.45);
+      stroke-width: 1;
+    }
+    .chart-dot {
+      pointer-events: none;
+    }
+    .chart-tooltip {
+      display: none;
+      position: absolute;
+      z-index: 2;
+      left: 0;
+      top: 0;
+      min-width: 9.5rem;
+      max-width: 14rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 0.35rem;
+      background: rgba(28, 25, 23, 0.92);
+      color: #fff;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      font-weight: 500;
+      pointer-events: none;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    }
+    .chart-tooltip.is-on { display: block; }
+    .chart-tooltip strong {
+      display: block;
+      margin-bottom: 0.2rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .chart-tooltip .chart-tip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .chart-tooltip .chart-tip-row em {
+      font-style: normal;
+      opacity: 0.75;
     }
     .chart-tick {
       font-size: 9px;
@@ -1379,19 +1428,19 @@
       </button>
       <div class="layers collapsed" id="layers-panel" hidden>
         <div class="layers-body">
-          <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> <span>Oficiales CyL (ES)</span></label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-galicia" checked /> <span>Galicia (incendios.gal)</span></label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-catalunya" checked /> <span>Cataluña (Bombers)</span></label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-andalucia" checked /> <span>Andalucía (INFOCA)</span></label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-clm" checked /> <span>Castilla-La Mancha (INFOCAM)</span></label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-aragon" checked /> <span>Aragón (CartoFor)</span></label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-portugal" checked /> <span>Portugal (fogos.pt)</span></label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-firms" checked /> <span>Detecciones satélite (FIRMS)</span></label>
-          <label class="layer-item"><input type="checkbox" id="layer-hotspots" /> <span>Teselas EFFIS</span></label>
-          <label class="layer-item"><input type="checkbox" id="layer-burned" /> <span>Área quemada</span></label>
-          <label class="layer-item is-on"><input type="checkbox" id="layer-relief" checked /> <span>Relieve</span></label>
-          <label class="layer-item"><input type="checkbox" id="layer-satellite" /> <span>Vista satélite</span></label>
-          <p class="layers-note">Portugal vía proxy Cloudflare → <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a></p>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-oficiales" checked /> <span data-i18n="layer.cyl">Oficiales CyL (ES)</span></label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-galicia" checked /> <span data-i18n="layer.galicia">Galicia (incendios.gal)</span></label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-catalunya" checked /> <span data-i18n="layer.catalunya">Cataluña (Bombers)</span></label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-andalucia" checked /> <span data-i18n="layer.andalucia">Andalucía (INFOCA)</span></label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-clm" checked /> <span data-i18n="layer.clm">Castilla-La Mancha (INFOCAM)</span></label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-aragon" checked /> <span data-i18n="layer.aragon">Aragón (CartoFor)</span></label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-portugal" checked /> <span data-i18n="layer.portugal">Portugal (fogos.pt)</span></label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-firms" checked /> <span data-i18n="layer.firms">Detecciones satélite (FIRMS)</span></label>
+          <label class="layer-item"><input type="checkbox" id="layer-hotspots" /> <span data-i18n="layer.effis">Teselas EFFIS</span></label>
+          <label class="layer-item"><input type="checkbox" id="layer-burned" /> <span data-i18n="layer.burned">Área quemada</span></label>
+          <label class="layer-item is-on"><input type="checkbox" id="layer-relief" checked /> <span data-i18n="layer.relief">Relieve</span></label>
+          <label class="layer-item"><input type="checkbox" id="layer-satellite" /> <span data-i18n="layer.satellite">Vista satélite</span></label>
+          <p class="layers-note" data-i18n-html="layers.note">Portugal vía proxy Cloudflare → <a href="https://fogos.pt" rel="noopener" target="_blank">fogos.pt</a></p>
         </div>
       </div>
     </div>

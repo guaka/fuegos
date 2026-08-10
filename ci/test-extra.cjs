@@ -209,9 +209,9 @@ async function runExtraTests(test, testAsync) {
     assert.ok(js.includes("FuegosI18n"));
     assert.ok(js.includes("I18n.init()"));
     assert.ok(js.includes("I18n.setOnChange"));
-    assert.ok(js.includes("Toda España"));
+    assert.ok(js.includes('I18n.t("panel.allSpain")') || js.includes("panel.allSpain"));
     assert.ok(js.includes('I18n.t("title.about"'));
-    assert.ok(js.includes("Satélite · FIRMS"));
+    assert.ok(js.includes("firms.badge") || js.includes("Satélite · FIRMS"));
   });
 
   test("Worker source exposes fires firms bombers infoca infocam aragon", () => {

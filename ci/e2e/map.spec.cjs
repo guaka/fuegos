@@ -64,8 +64,8 @@ test.describe("Fuegos Vivos map e2e", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("#btn-layers")).toHaveText(/^Map$/);
     await expect(page.locator("#link-about")).toHaveText(/^About$/);
-    // Map panel stays Spanish; only chrome (nav / about) switches.
-    await expect(page.locator(".panel-title").first()).toContainText(/Toda España/i, {
+    // Panel titles also switch with language.
+    await expect(page.locator(".panel-title").first()).toContainText(/All of Spain/i, {
       timeout: 30_000,
     });
     await page.locator("#link-about").click();
